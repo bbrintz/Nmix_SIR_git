@@ -1,3 +1,4 @@
+library(tidyverse)
 library(cmdstanr)
 library(bayesplot)
 library(posterior)
