@@ -46,27 +46,24 @@ R[1,] <- 0
 #ii[1,] <- rbinom(N_C, I_0, p_detect)
 #for (t in 2:TT) {
 #  for (ct in  1:N_C) {
-    #if (t > 2)
-    #  prev_t <- colSums(I[1:(t-1),]) - colSums(R[1:(t-1),])
-    #else
-    #  prev_t <- I[1,] - R[1,]
-#    I[t,ct] <- rbinom(1, S[t-1,ct], 1 - exp(- sum(beta[ct,] * I[t-1,]/ pop_size)))
+#    if (t > 2)
+#      prev_t <- colSums(I[1:(t-1),]) - colSums(R[1:(t-1),])
+#    else
+#      prev_t <- I[1,] - R[1,]
+#    I[t,ct] <- rbinom(1, S[t-1,ct], 1 - exp(- sum(beta[ct,] * prev_t/ pop_size)))
 #    S[t,ct] <- S[t - 1,ct] - I[t,ct]
-    #R[t,ct] <- rbinom(1, prev_t[ct], gamma[ct])
+#    R[t,ct] <- rbinom(1, prev_t[ct], gamma[ct])
     #ii[t,ct] <- rbinom(1, prev_t[ct] + I[t,ct] - R[t,ct], p_detect)
 #  }
 #}
   for (t in 1:(TT-1)){
-    SIstore=rep(0,N_C)
     for (ct in  1:N_C) {
-    SI=rbinom(N_C,S[t,],1-exp(- (beta[ct,] * I[t,]/ pop_size)))
-    SIstore=SIstore+SI
+    SI=rbinom(1,S[t,ct],1-exp(- sum(beta[ct,] * I[t,]/ pop_size)))
     IR=rbinom(1,I[t,ct],gamma[ct])
-    I[t+1,ct]=I[t,ct]+sum(SI)-IR
-    #S[t+1,]=S[t,]-SI
+    I[t+1,ct]=I[t,ct]+SI-IR
+    S[t+1,ct]=S[t,ct]-SI
     R[t+1,ct]=R[t,ct]+IR
   }
-  S[t+1,]=S[t,]-SIstore
   }
 
 ii=matrix(rbinom(N_C*TT,I,p_detect),nrow=TT)
@@ -225,7 +222,7 @@ ylims <- range(c(
   range(sweep(qpt975[1,,],MARGIN = 2, STATS = pop_size, FUN = "*")[,idx]),
   range(sweep(qpt025[1,,],MARGIN = 2, STATS = pop_size, FUN = "*")[,idx])
 ))
-matplot((apply(I,2,cumsum) - apply(R,2,cumsum))[,idx], xlab = "Time", 
+matplot(I[,idx], xlab = "Time", 
      ylab = "Prevalence", main = "Latent prevalence v. time first 2 cties",
      pch = 19,ylim=ylims)
 matlines(sweep(mean(z_t_d),MARGIN = 2, STATS = pop_size, FUN = "*")[,idx],lty=1)
