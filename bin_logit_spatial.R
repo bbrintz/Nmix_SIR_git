@@ -6,7 +6,7 @@ library(MASS)
 #set.seed(123)
 #beta <- 1.05
 #TT <- 100
-N_C <- 10 
+N_C <- 20 
 set.seed(31)
 
 # Spatial parameters
@@ -33,13 +33,13 @@ for (i in 1:(N_C-1)) {
 }
 beta=exp(log_beta)
 
-gamma <- runif(N_C, min = 0.7, max = 0.8)
+gamma <- runif(N_C, min = 0.8, max = 0.9)
 TT <- 30
 pop_size <- 1e3 * sample(1:10,N_C,TRUE)
 I_0 <- sample(10:20,N_C,TRUE)
 S_0 <- pop_size - I_0
 ii <- R <- S <- I <- matrix(NA_real_,TT, N_C)
-p_detect <- 0.6
+p_detect <- 0.4
 S[1,] <- S_0
 I[1,] <- I_0
 R[1,] <- 0 
@@ -106,7 +106,7 @@ hist(rbeta(1e6,0.75 * 5, 0.25 * 5),freq=FALSE,breaks=100, border = NA,
      main = "Prior (grey) vs. posterior (red) for prob of detection",
      xlab = "p", ylim = c(0,ymax+1))
 hist(fit$draws("p"),freq=FALSE,col=rgb(1,0,0,0.5),add=TRUE,border = NA)
-abline(v = 0.6,col="black")
+abline(v = p_detect,col="black")
 
 lims <- hist(fit$draws("beta[1,1]"),plot=FALSE)
 ymax <- lims$density |> max()
@@ -147,6 +147,32 @@ hist(-log(1-rbeta(1e6,0.8 * 15, 0.2 * 15)),freq=FALSE,ylim=c(0,ymax+1), border =
      xlab = bquote(-log(1-gamma[2])))
 hist(-log(1-fit$draws("gamma[2]")),freq=FALSE,col=rgb(1,0,0,0.5),add=TRUE,border = NA)
 abline(v = -log(1-gamma[2]),col="black")
+
+lims <- hist(fit$draws("decay_rate_space"),plot=FALSE)
+ymax <- lims$density |> max()
+hist(rgamma(1e6,4, 4),freq=FALSE,breaks=100, border = NA,
+     main = "Prior (grey) vs. posterior (red) for prob of detection",
+     xlab = "p", ylim = c(0,ymax+1))
+hist(fit$draws("decay_rate_space"),freq=FALSE,col=rgb(1,0,0,0.5),add=TRUE,border = NA)
+abline(v = decay_rate_space,col="black")
+
+lims <- hist(fit$draws("sigma"),plot=FALSE)
+ymax <- lims$density |> max()
+hist(rgamma(1e6,2, 2),freq=FALSE,breaks=100, border = NA,
+     main = "Prior (grey) vs. posterior (red) for prob of detection",
+     xlab = "p", ylim = c(0,ymax+1))
+hist(fit$draws("sigma"),freq=FALSE,col=rgb(1,0,0,0.5),add=TRUE,border = NA)
+abline(v = sigma,col="black")
+
+lims <- hist(fit$draws("rho"),plot=FALSE)
+ymax <- lims$density |> max()
+hist(rgamma(1e6,2, 2),freq=FALSE,breaks=100, border = NA,
+     main = "Prior (grey) vs. posterior (red) for prob of detection",
+     xlab = "p", ylim = c(0,ymax+1))
+hist(fit$draws("rho"),freq=FALSE,col=rgb(1,0,0,0.5),add=TRUE,border = NA)
+abline(v = rho,col="black")
+
+
 
 
 plot(fit$summary("b")$mean, as.vector(beta))
@@ -217,7 +243,7 @@ z_t_d <- fit$draws("i_t", format = "draws_array") |> posterior::as_draws_rvars()
 z_t_d <- z_t_d$i_t
 qpt025 <- quantile(z_t_d,0.025)
 qpt975 <- quantile(z_t_d,0.975)
-idx <- 1:2
+idx <- 1:5
 ylims <- range(c(
   range(sweep(qpt975[1,,],MARGIN = 2, STATS = pop_size, FUN = "*")[,idx]),
   range(sweep(qpt025[1,,],MARGIN = 2, STATS = pop_size, FUN = "*")[,idx])

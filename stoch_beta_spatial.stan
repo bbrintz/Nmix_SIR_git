@@ -78,7 +78,7 @@ model {
   // Priors
   sigma ~ gamma(2, 2);
   rho ~ gamma(2, 2);
-  decay_rate_space ~ gamma(4, 4);
+  decay_rate_space ~ gamma(2, 2);
 
   // Prior for log_beta_diag
   log_beta_diag ~ multi_normal(rep_vector(0, N_C), Sigma);
