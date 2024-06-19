@@ -1,6 +1,6 @@
 library(tidyverse)
 
-case = read_csv("./data/time_series_covid19_confirmed_US.csv") %>% filter(`Province/State`=="Utah")
+case = read_csv("./data/time_series_covid19_confirmed_US.csv") %>% filter(`Province_State`=="Utah")
 test = read_csv("./data/time_series_covid19_US_testing_by_state.csv") %>% filter(state=="UT")
 vax = read_csv("./data/COVID-19_Vaccinations_in_the_United_States_County.csv") %>% filter(Recip_State=="UT")
 test=test %>% mutate(date=mdy(date)) %>% arrange(date) %>% select(date,tests_combined_total)
@@ -20,6 +20,6 @@ case=case %>% ungroup() %>% mutate(date=(date = 14 * (as.numeric(date - min(date
 
 
 
-case %>% group_by(Admin2) %>% filter(any(cases>100000)) %>%
+case %>% group_by(Admin2) %>% filter(any(cases>10000)) %>%
 ggplot(aes(x=date,y=cases)) + facet_wrap(~Admin2) + geom_line() + theme_minimal() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
