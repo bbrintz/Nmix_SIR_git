@@ -20,6 +20,6 @@ case=case %>% ungroup() %>% mutate(date=(date = 14 * (as.numeric(date - min(date
 
 
 
-case %>% group_by(Admin2) %>% filter(any(cases>10000)) %>%
+case %>% group_by(Admin2) %>% filter(any(cases>1000)) %>%
 ggplot(aes(x=date,y=cases)) + facet_wrap(~Admin2) + geom_line() + theme_minimal() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
