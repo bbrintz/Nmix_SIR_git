@@ -3,6 +3,8 @@ library(cmdstanr)
 library(bayesplot)
 library(posterior)
 library(MASS)
+
+
 #set.seed(123)
 #beta <- 1.05
 #TT <- 100
@@ -56,7 +58,7 @@ R[1,] <- 0
     #ii[t,ct] <- rbinom(1, prev_t[ct] + I[t,ct] - R[t,ct], p_detect)
 #  }
 #}
-  for (t in 1:(TT-1)){
+for (t in 1:(TT-1)){
     for (ct in  1:N_C) {
     SI=rbinom(1,S[t,ct],1-exp(- sum(beta[ct,] * I[t,]/ pop_size)))
     IR=rbinom(1,I[t,ct],gamma[ct])
@@ -254,3 +256,4 @@ matplot(I[,idx], xlab = "Time",
 matlines(sweep(mean(z_t_d),MARGIN = 2, STATS = pop_size, FUN = "*")[,idx],lty=1)
 matlines(sweep(qpt025[1,,],MARGIN = 2, STATS = pop_size, FUN = "*")[,idx],lty=2)
 matlines(sweep(qpt975[1,,],MARGIN = 2, STATS = pop_size, FUN = "*")[,idx],lty=2)
+
