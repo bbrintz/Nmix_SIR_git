@@ -91,7 +91,7 @@ model {
   for (i in 1:TT) {
     for (ct in 1:N_C) {
         if (i_t[i,ct] > 0)
-          ii[i,ct] ~ normal(p * pop_size[ct] * i_t[i,ct], sqrt(pop_size[ct] * p * i_t[i,ct] * (1 - p * i_t[i,ct])));
+          ii[i,ct] ~ normal(p * pop_size[ct] * i_t[i,ct], sqrt(pop_size[ct] * p * i_t[i,ct] * (1 - p )));
     }
   }
 }

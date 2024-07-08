@@ -12,7 +12,7 @@ case=case %>% select(-c(1:5,7:11)) %>% gather("date","cases",-Admin2) %>% mutate
 #case=test %>% right_join(case,by="date") %>% left_join(vax,by="date") %>% mutate(vax=replace_na(vax,0))
 
 case=case %>% ungroup() %>% mutate(date=(date = 7 * (as.numeric(date - min(date)) %/% 7) + min(date))) %>% 
-  group_by(date,Admin2) %>% summarize(cases=sum(cases-lag(cases),na.rm=T)) %>%#,tests=sum(tests_combined_total-lag(tests_combined_total),na.rm=T))#,
+  group_by(date,Admin2) %>% summarize(cases=sum(cases)) %>%#,tests=sum(tests_combined_total-lag(tests_combined_total),na.rm=T))#,
                                #vax=sum(vax-lag(vax),na.rm=T))
                                filter(date>=ymd("2020-04-15")) %>% filter(date<ymd("2021-06-02"))
                                #filter(date>=ymd("2020-10-06")) %>% filter(date<ymd("2021-02-02"))
@@ -21,15 +21,15 @@ case=case %>% ungroup() %>% mutate(date=(date = 7 * (as.numeric(date - min(date)
 data.frame(case %>% group_by(date) %>% summarize(sum(cases>0)))
 
 
-case %>% group_by(Admin2) %>% filter(any(cases>100)) %>%# filter(any(cases>1000)) %>%
+case %>% filter(Admin2 %in% readRDS("final_counties.rds")) %>%# filter(any(cases>1000)) %>%
 ggplot(aes(x=date,y=cases)) + facet_wrap(~Admin2) + geom_line() + theme_minimal() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 data.frame(case %>% group_by(Admin2) %>% filter(any(cases>100)) %>% 
 ungroup() %>% group_by(date) %>% summarize(sum(cases>0)))
 ###
 
-
-dat_final=case %>% group_by(Admin2) %>% filter(any(cases>100))
+#saveRDS(unique(dat_final$Admin2),"final_counties.rds")
+dat_final=case %>% filter(Admin2 %in% readRDS("final_counties.rds"))#group_by(Admin2) %>% filter(any(cases>100))
 
 pop=read_csv("./data/utah_counties_pop_coord.csv") %>% arrange(desc(Population_2020))
 
@@ -42,12 +42,17 @@ for(i in 1:12){
 } 
 
 
-d1=dat_final %>% rename(County="Admin2") %>% left_join(pop,by="County") %>% arrange(desc(Population_2020),date) %>%
+d1=dat_final %>% ungroup() %>% rename(County="Admin2") %>% left_join(pop,by="County") %>% arrange(desc(Population_2020),date) %>%
 select(-Population_2020,-Latitude,-Longitude) %>% pivot_wider(names_from=County,values_from=cases) %>%
 select(-date)
-d1[3,12]=0
+#d1[3,12]=0
 
-tt <- cmdstan_model("stoch_beta_spatial.stan")
+tt <- cmdstan_model("stoch_beta_spatial_cum.stan")
+
+
+
+    TT = nrow(d1)
+    N_C = ncol(d1)
 
 dat <- 
   list(
@@ -57,9 +62,6 @@ dat <-
     pop_size = pop$Population_2020,
     D=dist
   )
-
-    TT = nrow(d1)
-    N_C = ncol(d1)
 
 fit <- tt$sample(data = dat, chains = 4,
                  adapt_delta = 0.95,
