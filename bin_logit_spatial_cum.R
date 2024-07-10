@@ -8,7 +8,7 @@ library(MASS)
 #set.seed(123)
 #beta <- 1.05
 #TT <- 100
-N_C <- 10 
+N_C <- 20 
 set.seed(31)
 
 # Spatial parameters
@@ -80,6 +80,7 @@ head((apply(I,2,cumsum) - apply(R,2,cumsum)))
 tail((apply(I,2,cumsum) - apply(R,2,cumsum)))
 (pop_size - S[TT,]) / pop_size
 
+
 dat <- 
   list(
     ii = ii,
@@ -105,6 +106,9 @@ fit <- tt$sample(data = dat, chains = 4,
                  step_size = 1.5e-3)
 
 
+fit$summary("p")
+
+png("Pfig.png")
 lims <- hist(fit$draws("p"),plot=FALSE)
 ymax <- lims$density |> max()
 hist(rbeta(1e6,0.75 * 5, 0.25 * 5),freq=FALSE,breaks=100, border = NA,
@@ -112,6 +116,7 @@ hist(rbeta(1e6,0.75 * 5, 0.25 * 5),freq=FALSE,breaks=100, border = NA,
      xlab = "p", ylim = c(0,ymax+1))
 hist(fit$draws("p"),freq=FALSE,col=rgb(1,0,0,0.5),add=TRUE,border = NA)
 abline(v = p_detect,col="black")
+dev.off()
 
 lims <- hist(fit$draws("beta[1,1]"),plot=FALSE)
 ymax <- lims$density |> max()
@@ -244,6 +249,7 @@ np_fit <- nuts_params(fit)
 mcmc_pairs(fit$draws(c("p","i0","gamma","beta")), np = np_fit, pars = c("p","gamma[3]","beta[1,1]","gamma[4]","beta[1,2]"),
            off_diag_args = list(size = 0.75))
 
+png("inf_est.png")
 z_t_d <- fit$draws("i_t", format = "draws_array") |> posterior::as_draws_rvars()
 z_t_d <- z_t_d$i_t
 qpt025 <- quantile(z_t_d,0.025)
@@ -259,4 +265,4 @@ matplot(I[,idx], xlab = "Time",
 matlines(sweep(mean(z_t_d),MARGIN = 2, STATS = pop_size, FUN = "*")[,idx],lty=1)
 matlines(sweep(qpt025[1,,],MARGIN = 2, STATS = pop_size, FUN = "*")[,idx],lty=2)
 matlines(sweep(qpt975[1,,],MARGIN = 2, STATS = pop_size, FUN = "*")[,idx],lty=2)
-
+dev.off()

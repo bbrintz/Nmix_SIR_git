@@ -1,0 +1,119 @@
+## Using the inverse Normal-logit for transition distributions
+
+We model increments between $S$ and $I$ and $I$ and $R$ using the inverse logit of a normal.
+Let $N$ be the total population at risk of infection at time $1$, let $S_t$ be the susceptible population at time $t$, let $I_t$ be the number of people infected at time $t$, let $SI_t$ be the number of new infections at time $t$, let $IR_t$ be the people who recover at time $t$.  
+Here is the data generating process:
+
+$$
+\begin{aligned}
+    I_1 & = c \\
+    S_1 & = N - I_1 \\
+    SI_t & \sim \text{Binomial}(S_{t-1}, 1 - \exp(-\beta I_{t-1} / N)) \\
+    IR_t & \sim \text{Binomial}(I_{t-1}, 1 - e^{-\gamma})\\
+    S_t & = S_{t-1} - SI_t \\
+    I_t & = I_{t-1} + SI_t - IR_t \\
+    ii_t & \sim \text{Binomial}(I_t, p)
+\end{aligned}
+$$
+
+We want to approximate this data generating process (DGP) for latent discrete random variables $SI_t$ and $IR_t$ with a model using continuous random variables for $SI_t$ and $IR_t$.
+The first step is to move everything from the counts scale to the proportion scale by dividing variables by $N$.
+Let these random variables be denoted with lowercase letters to distinguish them from their count representations.
+The new DGP is 
+
+$$
+\begin{aligned}
+    i_1 & = c / N \\
+    s_1 & = 1 - i_1 \\
+    SI_t & \sim \text{Binomial}(s_{t-1} N, 1 - \exp(-\beta i_{t-1})) \\
+    IR_t & \sim \text{Binomial}(i_{t-1} N, 1 - e^{-\gamma})\\
+    s_t & = s_{t-1} - SI_t / N \\
+    i_t & = i_{t-1} + SI_t / N - IR_t / N \\
+    ii_t & \sim \text{Binomial}(i_t N, p)
+\end{aligned}
+$$
+
+We now approximate the increments $SI_t / N$ and $IR_t / N$ with scaled inverse-logits (which is denoted `expit(x)` below) of normal random variables with approximately the same mean and variance as our binomial-proportion random variables.
+
+$$
+\begin{aligned}
+    \mathbb{E}\left[\frac{SI_t}{N}\right] &= s_{t-1} (1 - \exp(-\beta i_{t-1})), & \quad \text{Var}\left(\frac{SI_t}{N}\right) &= \frac{s_{t-1}}{N} \exp(-\beta i_{t-1})(1 - \exp(-\beta i_{t-1})) \\
+    \mathbb{E}\left[\frac{IR_t}{N}\right] &= i_{t-1} (1 - e^{-\gamma}), & \quad \text{Var}\left(\frac{IR_t}{N}\right) &= \frac{i_{t-1}}{N} e^{-\gamma}(1 - e^{-\gamma})
+\end{aligned}
+$$
+
+Let $si_t$ and $ir_t$ be random variables with bounds $[0, s_{t-1}]$ and $[0, i_{t-1}]$, respectively.
+We need to find $u_t$ and $w_t$ distributed on $[0, 1]$ such that $si_t = u_t s_{t-1}$ and $ir_t = i_{t-1} w_t$.
+with the same mean and variance.
+
+$$
+\begin{aligned}
+    \mathbb{E}[s_{t-1} u_t] &= s_{t-1} \mathbb{E}[u_t] = s_{t-1}(1 - \exp(-\beta i_{t-1})) \\
+    \text{Var}(s_{t-1} u_t) &= s_{t-1}^2 \text{Var}(u_t) = \frac{s_{t-1}}{N} \exp(-\beta i_{t-1})(1 - \exp(-\beta i_{t-1}))
+\end{aligned}
+$$
+
+Solving for $\mathbb{E}[u_t]$ and $\text{Var}(u_t)$ implies
+
+$$
+\begin{aligned}
+    \mathbb{E}[u_t] &= (1 - \exp(-\beta i_{t-1})) \\
+    \text{Var}(u_t) &= \frac{1}{s_{t-1} N} \exp(-\beta i_{t-1})(1 - \exp(-\beta i_{t-1}))
+\end{aligned}
+$$
+
+What we could do is to take $\tilde{u}_t, \tilde{w}_t \sim \text{Normal}$ and let $u_t = \text{inv\_logit}(\tilde{u}_t)$ and similarly for $w_t$.
+
+The downside of this approach is that the expectation of the inverse logit of a normal does not have an analytic form, but we could approximate with the Delta method.
+Let 
+
+$$
+\tilde{u}_t \sim \text{Normal}(\mu_u, \sigma^2_u), \tilde{w}_t \sim \text{Normal}(\mu_w, \sigma^2_w).
+$$
+
+We need to find $\mu_u, \sigma^2_u$ such that 
+
+$$
+\mathbb{E}[\text{expit}(\tilde{u}_t)] \approx (1 - \exp(-\beta i_{t-1})), \quad \text{Var}(\text{expit}(\tilde{u}_t)) \approx \frac{1}{s_{t-1} N} \exp(-\beta i_{t-1})(1 - \exp(-\beta i_{t-1})).
+$$
+
+Using the delta method gives that 
+
+$$
+\mathbb{E}[\text{expit}(\tilde{u}_t)] \approx \text{expit}(\mu_u), \quad \text{Var}(\text{expit}(\tilde{u}_t)) \approx \sigma_u^2 (\text{expit}(\mu_u)^\prime)^2
+$$
+
+This leads to the following parameters:
+
+$$
+\begin{aligned}
+    \mu_u &= \text{logit}(1 - \exp(-\beta i_{t-1}))  \\
+    \sigma_u^2 &= \frac{1}{s_{t-1} N} \frac{\exp(-\beta i_{t-1})(1 - \exp(-\beta i_{t-1}))}{((1 - \text{expit}(\mu_u))\text{expit}(\mu_u))^2} \\
+    &= \frac{1}{\exp(-\beta i_{t-1})(1 - \exp(-\beta i_{t-1})) s_{t-1} N}
+\end{aligned}
+$$
+
+## Spatial Beta Increments 
+We assume the transmission parameter $\beta$ are correlated between counties dependent on their distance from each other using exponential spatial decay with variance covariance matrix for $\log(\beta)$ : 
+$$
+    \Sigma = \sigma^2 * \exp(-D / \rho) 
+$$
+where $D$ is the CxC distance matrix and $\rho$ represents the "range" of the covariance. We also assume that the neighbors' tranmission rate has an effect on a given county's overall transmission since it's conceivable that neighboring populations would come into contact with each other and that contact is less likely as distance increases. As a result, the spatial model uses the following distributional assumption for the $SI_{it}$ parameter for site $i$: 
+$$
+\begin{aligned}
+SI_{it} & \sim \text{Binomial}(s_{i,t-1} N, 1 - \exp(-\Sigma_{j=1}^{C} \beta_{i,j} i_{j,t-1}))
+\end{aligned}
+$$
+and decreases the effect on distant neighbors using the deterministic function:
+$$
+\begin{aligned}
+\log(\beta)_{ij} = \log(\beta)_{ii} - \nu * D_{ij}
+\end{aligned}
+$$
+where $\nu$ is the spatial decay rate. 
+
+## Some results
+![Figure 1. Prior and Posterior of detection parameter](Pfig.png) 
+
+![Figure 2. Infection Estimates](inf_est.png)
+
