@@ -117,3 +117,4 @@ where $\nu$ is the spatial decay rate.
 
 ![Figure 2. Infection Estimates](inf_est.png)
 
+## Simulation 
