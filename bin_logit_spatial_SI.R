@@ -56,7 +56,7 @@ for (t in 1:(TT-1)){
   }
   }
 
-ii=matrix(rbinom(N_C*(TT-1),SI,p_detect),nrow=TT-1)
+ii=matrix(rbinom(N_C*TT,rbind(I_0,SI),p_detect),nrow=TT)
 
 matplot(ii, type="l")
 

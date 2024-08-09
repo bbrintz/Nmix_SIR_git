@@ -40,7 +40,7 @@ TT <- 30
 pop_size <- 1e3 * sample(1:10,N_C,TRUE)
 I_0 <- sample(10:20,N_C,TRUE)
 S_0 <- pop_size - I_0
-ii <- R <- S <- I <- matrix(NA_real_,TT, N_C)
+ii <- R <- S <- I <- SI <- matrix(NA_real_,TT, N_C)
 p_detect <- 0.7
 S[1,] <- S_0
 I[1,] <- I_0
@@ -58,24 +58,25 @@ R[1,] <- 0
     #ii[t,ct] <- rbinom(1, prev_t[ct] + I[t,ct] - R[t,ct], p_detect)
 #  }
 #}
+SI[1,]=I_0
 for (t in 1:(TT-1)){
     for (ct in  1:N_C) {
-    SI=rbinom(1,S[t,ct],1-exp(- sum(beta[ct,] * I[t,]/ pop_size)))
+    SI[t+1,ct]=rbinom(1,S[t,ct],1-exp(- sum(beta[ct,] * I[t,]/ pop_size)))
     IR=rbinom(1,I[t,ct],gamma[ct])
-    I[t+1,ct]=I[t,ct]+SI-IR
-    S[t+1,ct]=S[t,ct]-SI
+    I[t+1,ct]=I[t,ct]+SI[t,ct]-IR
+    S[t+1,ct]=S[t,ct]-SI[t,ct]
     R[t+1,ct]=R[t,ct]+IR
   }
   }
 
 # For each column of I, keep a cumulative count of the number of infections in that county
-Icum <- apply(I,2,cumsum)
+#Icum <- apply(SI,2,cumsum)
 
-ii=matrix(rbinom(N_C*TT,Icum,p_detect),nrow=TT)
+ii=apply(matrix(rbinom(N_C*TT,SI,p_detect),nrow=TT),2,cumsum)
 
 matplot(ii, type="l")
 
-tt <- cmdstan_model("stoch_beta_spatial_cum.stan")
+tt <- cmdstan_model( "stoch_beta_spatial_cum.stan")
 head((apply(I,2,cumsum) - apply(R,2,cumsum)))
 tail((apply(I,2,cumsum) - apply(R,2,cumsum)))
 (pop_size - S[TT,]) / pop_size
@@ -83,7 +84,7 @@ tail((apply(I,2,cumsum) - apply(R,2,cumsum)))
 
 dat <- 
   list(
-    ii = ii,
+    iiobs = ii,
     TT = TT,
     N_C = N_C,
     pop_size = pop_size,

@@ -2,11 +2,10 @@ data {
   int<lower=1> N_C;
   int<lower=0> TT;
   vector<lower=0>[N_C] pop_size;
-  array[TT,N_C] real<lower=0> ii;
+  array[TT,N_C] int<lower=0> iiobs;
   matrix[N_C, N_C] D;
 }
 parameters {
-
   matrix[TT, N_C] u_t_logit_eta;
   matrix[TT, N_C] w_t_logit_eta;
   row_vector<lower=0, upper=1>[N_C] i0;
@@ -57,7 +56,7 @@ transformed parameters {
   beta = exp(log_beta);
 
 
-  si_t[1,] = rep_row_vector(0,N_C);
+  si_t[1,] = i0; //rep_row_vector(0,N_C);
   i_t[1,] = i0;
   s_t[1] = 1 - i0;
   ir_t[1,] = rep_row_vector(0,N_C);
@@ -75,7 +74,7 @@ transformed parameters {
   }
 }
 model {
-  // Priors
+  array[TT, N_C] int ii;  // Priors
   sigma ~ gamma(2, 2);
   rho ~ gamma(2, 2);
   decay_rate_space ~ gamma(2, 2);
@@ -88,10 +87,21 @@ model {
  gamma ~ beta_proportion(0.8, 15);
  to_vector(u_t_logit_eta) ~ std_normal();
  to_vector(w_t_logit_eta) ~ std_normal();
-  for (i in 1:TT) {
-    for (ct in 1:N_C) {
-        if (i_t[i,ct] > 0)
-          ii[i,ct] ~ normal(p * pop_size[ct] * sum(i_t[1:i,ct]), sqrt(pop_size[ct] * p * sum(i_t[1:i,ct]) * (1 - p)));
+ 
+
+
+ ii[1,] = iiobs[1,];
+
+for (ct in 1:N_C) {
+for(i in 2:TT) {
+ii[i,ct] = iiobs[i,ct] - iiobs[i-1,ct];
+}
+}
+
+ for (ct in 1:N_C) {
+ for (i in 1:TT) {
+        //if (i_t[i,ct] > 0)
+          ii[i,ct] ~ normal(p * pop_size[ct] * si_t[i,ct], sqrt(pop_size[ct] * p * si_t[i,ct] * (1 - p)));
     }
   }
 }
