@@ -2,7 +2,7 @@ data {
   int<lower=1> N_C;
   int<lower=0> TT;
   vector<lower=0>[N_C] pop_size;
-  array[TT,N_C] real<lower=0> ii;
+  array[TT-1,N_C] real<lower=0> ii;
   matrix[N_C, N_C] D;
 }
 parameters {
@@ -57,7 +57,7 @@ transformed parameters {
   beta = exp(log_beta);
 
 
-  si_t[1,] = i0; //rep_row_vector(0,N_C);
+  si_t[1,] = rep_row_vector(0,N_C);
   i_t[1,] = i0;
   s_t[1] = 1 - i0;
   ir_t[1,] = rep_row_vector(0,N_C);
@@ -89,9 +89,9 @@ model {
  to_vector(u_t_logit_eta) ~ std_normal();
  to_vector(w_t_logit_eta) ~ std_normal();
   for (ct in 1:N_C) {
-    for (i in 1:(TT)) {
+    for (i in 1:(TT-1)) {
         if (si_t[i,ct] > 0)
-          ii[i,ct] ~ normal(p * pop_size[ct] * si_t[i,ct], sqrt(pop_size[ct] * p * si_t[i,ct] * (1 - p)));
+          ii[i,ct] ~ normal(p * pop_size[ct] * si_t[i+1,ct], sqrt(pop_size[ct] * p * si_t[i+1,ct] * (1 - p)));
     }
   }
 }
