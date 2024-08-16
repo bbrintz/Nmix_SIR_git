@@ -21,7 +21,7 @@ DiffsMat %>% mutate(dist=abs(Var1-Var2)) -> D
 
 D <- matrix(D$dist,nrow=N_C)
 Sigma <- sigma^2 * exp(-D / rho)
-log_beta_diag=mvrnorm(1, rep(0, N_C), Sigma);log_beta_diag
+log_beta_diag=mvrnorm(1, rep(0.2, N_C), Sigma);log_beta_diag
 log_beta = matrix(0, N_C, N_C)
 diag(log_beta)=log_beta_diag
 
@@ -35,7 +35,7 @@ for (i in 1:(N_C-1)) {
 beta=exp(log_beta)
 
 gamma <- runif(N_C, min = 0.8, max = 0.9)
-TT <- 30
+TT <- 19
 pop_size <- 1e3 * sample(1:10,N_C,TRUE)
 I_0 <- sample(10:20,N_C,TRUE)
 S_0 <- pop_size - I_0
@@ -229,7 +229,7 @@ np_fit <- nuts_params(fit)
 mcmc_pairs(fit$draws(c("p","i0","gamma","beta")), np = np_fit, pars = c("p","gamma[3]","beta[1,1]","gamma[4]","beta[1,2]"),
            off_diag_args = list(size = 0.75))
 
-z_t_d <- fit$draws("i_t", format = "draws_array") |> posterior::as_draws_rvars()
+z_t_d <- fit$draws("si_t", format = "draws_array") |> posterior::as_draws_rvars()
 z_t_d <- z_t_d$i_t
 qpt025 <- quantile(z_t_d,0.025)
 qpt975 <- quantile(z_t_d,0.975)
@@ -238,7 +238,7 @@ ylims <- range(c(
   range(sweep(qpt975[1,,],MARGIN = 2, STATS = pop_size, FUN = "*")[,idx]),
   range(sweep(qpt025[1,,],MARGIN = 2, STATS = pop_size, FUN = "*")[,idx])
 ))
-matplot(I[,idx], xlab = "Time", 
+matplot(SI[,idx], xlab = "Time", 
      ylab = "Prevalence", main = "Latent prevalence v. time first 2 cties",
      pch = 19,ylim=ylims)
 matlines(sweep(mean(z_t_d),MARGIN = 2, STATS = pop_size, FUN = "*")[,idx],lty=1)

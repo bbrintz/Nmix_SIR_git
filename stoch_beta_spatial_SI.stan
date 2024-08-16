@@ -90,7 +90,7 @@ model {
  to_vector(w_t_logit_eta) ~ std_normal();
   for (ct in 1:N_C) {
     for (i in 1:(TT-1)) {
-        if (si_t[i,ct] > 0)
+        if (si_t[i+1,ct] > 0)
           ii[i,ct] ~ normal(p * pop_size[ct] * si_t[i+1,ct], sqrt(pop_size[ct] * p * si_t[i+1,ct] * (1 - p)));
     }
   }
