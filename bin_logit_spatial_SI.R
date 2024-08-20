@@ -35,8 +35,8 @@ for (i in 1:(N_C-1)) {
 beta=exp(log_beta)
 
 gamma <- runif(N_C, min = 0.8, max = 0.9)
-TT <- 19
-pop_size <- 1e3 * sample(1:10,N_C,TRUE)
+TT <- 15
+pop_size <- 1e4 * sample(1:10,N_C,TRUE)
 I_0 <- sample(10:20,N_C,TRUE)
 S_0 <- pop_size - I_0
 R <- S <- I <- matrix(NA_real_,TT, N_C)
@@ -57,6 +57,7 @@ for (t in 1:(TT-1)){
   }
 
 ii=matrix(rbinom(N_C*(TT-1),SI,p_detect),nrow=TT-1)
+#ii[which(ii==0)]=round(runif(sum(ii==0),1,5))
 
 matplot(ii, type="l")
 
@@ -76,7 +77,7 @@ dat <-
 
 fit <- tt$sample(data = dat, chains = 4,
                  adapt_delta = 0.95,
-                 max_treedepth = 10,
+                 max_treedepth = 12,
                  init = \() {list(u_t_logit_eta = matrix(qlogis(rbeta(TT*N_C, 1, 9)), TT, N_C),
                                   w_t_logit_eta = matrix(qlogis(rbeta(TT*N_C, 1, 9)), TT, N_C),
                                   p = rbeta(1, 4, 4),
@@ -98,6 +99,9 @@ hist(rbeta(1e6,0.75 * 5, 0.25 * 5),freq=FALSE,breaks=100, border = NA,
 hist(fit$draws("p"),freq=FALSE,col=rgb(1,0,0,0.5),add=TRUE,border = NA)
 abline(v = p_detect,col="black")
 
+fit$draws("p") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
+
+
 lims <- hist(fit$draws("beta[1,1]"),plot=FALSE)
 ymax <- lims$density |> max()
 hist(rgamma(1e6,4, 4),freq=FALSE,ylim=c(0,ymax+1),breaks=100, border = NA,
@@ -105,6 +109,8 @@ hist(rgamma(1e6,4, 4),freq=FALSE,ylim=c(0,ymax+1),breaks=100, border = NA,
      xlab = bquote(beta[1,1]))
 hist(fit$draws("beta[1,1]"),freq=FALSE,col=rgb(1,0,0,0.5),add=TRUE,border = NA)
 abline(v = beta[1,1],col="black")
+
+
 
 lims <- hist(fit$draws("b[1,2]"),plot=FALSE)
 ymax <- lims$density |> max()
@@ -116,7 +122,7 @@ abline(v = beta[1,2],col="black")
 
 lims <- hist(fit$draws("b[1,3]"),plot=FALSE)
 ymax <- lims$density |> max()
-hist(rgamma(1e6,4, 4),freq=FALSE,ylim=c(0,ymax+1),breaks=100, border = NA,
+hist(rgamma(1e6,20, 4),freq=FALSE,ylim=c(0,ymax+1),breaks=100, border = NA,
      main = "Prior (grey) vs. posterior (red) for inter-county rate of infection for 2NN",
      xlab = bquote(beta[ij]~", "~abs(i - j) == 2))
 hist(fit$draws("b[1,3]"),freq=FALSE,col=rgb(1,0,0,0.5),add=TRUE,border = NA)
@@ -140,7 +146,7 @@ abline(v = -log(1-gamma[2]),col="black")
 
 lims <- hist(fit$draws("decay_rate_space"),plot=FALSE)
 ymax <- lims$density |> max()
-hist(rgamma(1e6,4, 4),freq=FALSE,breaks=100, border = NA,
+hist(rgamma(1e6,10, 2),freq=FALSE,breaks=100, border = NA,
      main = "Prior (grey) vs. posterior (red) for prob of detection",
      xlab = "p", ylim = c(0,ymax+1))
 hist(fit$draws("decay_rate_space"),freq=FALSE,col=rgb(1,0,0,0.5),add=TRUE,border = NA)

@@ -88,7 +88,7 @@ Here is the data generating process:</p>
     IR_t &amp; \sim \text{Binomial}(I_{t-1}, 1 - e^{-\gamma})\\
     S_t &amp; = S_{t-1} - SI_t \\
     I_t &amp; = I_{t-1} + SI_t - IR_t \\
-    ii_t &amp; \sim \text{Binomial}(I_t, p)
+    ii_t &amp; \sim \text{Binomial}(SI_t, p)
 \end{aligned}
 \]</span></p>
 <p>We want to approximate this data generating process (DGP) for latent discrete random variables <span class="math inline">\(SI_t\)</span> and <span class="math inline">\(IR_t\)</span> with a model using continuous random variables for <span class="math inline">\(SI_t\)</span> and <span class="math inline">\(IR_t\)</span>. The first step is to move everything from the counts scale to the proportion scale by dividing variables by <span class="math inline">\(N\)</span>. Let these random variables be denoted with lowercase letters to distinguish them from their count representations. The new DGP is</p>
@@ -100,7 +100,7 @@ Here is the data generating process:</p>
     IR_t &amp; \sim \text{Binomial}(i_{t-1} N, 1 - e^{-\gamma})\\
     s_t &amp; = s_{t-1} - SI_t / N \\
     i_t &amp; = i_{t-1} + SI_t / N - IR_t / N \\
-    ii_t &amp; \sim \text{Binomial}(i_t N, p)
+    ii_t &amp; \sim \text{Binomial}(si_t N, p)
 \end{aligned}
 \]</span></p>
 <p>We now approximate the increments <span class="math inline">\(SI_t / N\)</span> and <span class="math inline">\(IR_t / N\)</span> with scaled inverse-logits (which is denoted <code>expit(x)</code> below) of normal random variables with approximately the same mean and variance as our binomial-proportion random variables.</p>

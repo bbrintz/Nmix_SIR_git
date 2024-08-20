@@ -1,7 +1,4 @@
 ## Using the inverse Normal-logit for transition distributions
-
-Hi Ben
-
 We model increments between $S$ and $I$ and $I$ and $R$ using the inverse logit of a normal.
 Let $N$ be the total population at risk of infection at time $1$, let $S_t$ be the susceptible population at time $t$, let $I_t$ be the number of people infected at time $t$, let $SI_t$ be the number of new infections at time $t$, let $IR_t$ be the people who recover at time $t$.  
 Here is the data generating process:
@@ -14,7 +11,7 @@ $$
     IR_t & \sim \text{Binomial}(I_{t-1}, 1 - e^{-\gamma})\\
     S_t & = S_{t-1} - SI_t \\
     I_t & = I_{t-1} + SI_t - IR_t \\
-    ii_t & \sim \text{Binomial}(I_t, p)
+    ii_t & \sim \text{Binomial}(SI_t, p)
 \end{aligned}
 $$
 
@@ -31,7 +28,7 @@ $$
     IR_t & \sim \text{Binomial}(i_{t-1} N, 1 - e^{-\gamma})\\
     s_t & = s_{t-1} - SI_t / N \\
     i_t & = i_{t-1} + SI_t / N - IR_t / N \\
-    ii_t & \sim \text{Binomial}(i_t N, p)
+    ii_t & \sim \text{Binomial}(si_t N, p)
 \end{aligned}
 $$
 
