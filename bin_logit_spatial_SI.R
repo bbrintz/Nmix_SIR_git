@@ -3,7 +3,7 @@ library(cmdstanr)
 library(bayesplot)
 library(posterior)
 library(MASS)
-
+#tst
 set.seed(31)
 #set.seed(123)
 #beta <- 1.05
