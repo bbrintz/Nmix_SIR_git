@@ -10,6 +10,10 @@ set.seed(31)
 #TT <- 100
 N_C <- 20 
 
+#  p=plogis(peta0 + peta1 * tests/1000)
+#  plogis(0)
+
+
 # Spatial parameters
 # Parameters
 sigma <- .05 # Standard deviation of noise
@@ -100,7 +104,7 @@ hist(fit$draws("p"),freq=FALSE,col=rgb(1,0,0,0.5),add=TRUE,border = NA)
 abline(v = p_detect,col="black")
 
 fit$draws("p") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
-
+fit$summary("p")
 
 lims <- hist(fit$draws("beta[1,1]"),plot=FALSE)
 ymax <- lims$density |> max()
@@ -235,8 +239,10 @@ np_fit <- nuts_params(fit)
 mcmc_pairs(fit$draws(c("p","i0","gamma","beta")), np = np_fit, pars = c("p","gamma[3]","beta[1,1]","gamma[4]","beta[1,2]"),
            off_diag_args = list(size = 0.75))
 
+
+png("half_time.png")
 z_t_d <- fit$draws("si_t", format = "draws_array") |> posterior::as_draws_rvars()
-z_t_d <- z_t_d$i_t
+z_t_d <- z_t_d$si_t
 qpt025 <- quantile(z_t_d,0.025)
 qpt975 <- quantile(z_t_d,0.975)
 idx <- 1:5
@@ -247,7 +253,8 @@ ylims <- range(c(
 matplot(SI[,idx], xlab = "Time", 
      ylab = "Prevalence", main = "Latent prevalence v. time first 2 cties",
      pch = 19,ylim=ylims)
-matlines(sweep(mean(z_t_d),MARGIN = 2, STATS = pop_size, FUN = "*")[,idx],lty=1)
-matlines(sweep(qpt025[1,,],MARGIN = 2, STATS = pop_size, FUN = "*")[,idx],lty=2)
-matlines(sweep(qpt975[1,,],MARGIN = 2, STATS = pop_size, FUN = "*")[,idx],lty=2)
+matlines(sweep(mean(z_t_d)[-1,],MARGIN = 2, STATS = pop_size, FUN = "*")[,idx],lty=1)
+matlines(sweep(qpt025[1,-1,],MARGIN = 2, STATS = pop_size, FUN = "*")[,idx],lty=2)
+matlines(sweep(qpt975[1,-1,],MARGIN = 2, STATS = pop_size, FUN = "*")[,idx],lty=2)
 
+dev.off()

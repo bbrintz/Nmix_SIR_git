@@ -77,7 +77,6 @@ window.Quarto = {
 
 <section id="using-the-inverse-normal-logit-for-transition-distributions" class="level2">
 <h2 class="anchored" data-anchor-id="using-the-inverse-normal-logit-for-transition-distributions">Using the inverse Normal-logit for transition distributions</h2>
-<p>Hi Ben</p>
 <p>We model increments between <span class="math inline">\(S\)</span> and <span class="math inline">\(I\)</span> and <span class="math inline">\(I\)</span> and <span class="math inline">\(R\)</span> using the inverse logit of a normal. Let <span class="math inline">\(N\)</span> be the total population at risk of infection at time <span class="math inline">\(1\)</span>, let <span class="math inline">\(S_t\)</span> be the susceptible population at time <span class="math inline">\(t\)</span>, let <span class="math inline">\(I_t\)</span> be the number of people infected at time <span class="math inline">\(t\)</span>, let <span class="math inline">\(SI_t\)</span> be the number of new infections at time <span class="math inline">\(t\)</span>, let <span class="math inline">\(IR_t\)</span> be the people who recover at time <span class="math inline">\(t\)</span>.<br>
 Here is the data generating process:</p>
 <p><span class="math display">\[
@@ -172,6 +171,12 @@ SI_{it} &amp; \sim \text{Binomial}(s_{i,t-1} N, 1 - \exp(-\Sigma_{j=1}^{C} \beta
 <figure class="figure">
 <p><img src="inf_est.png" class="img-fluid figure-img"></p>
 <figcaption>Figure 2. Infection Estimates</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="half_time.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 3. Half the time</figcaption>
 </figure>
 </div>
 </section>

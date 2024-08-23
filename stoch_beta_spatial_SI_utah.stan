@@ -76,15 +76,15 @@ transformed parameters {
 }
 model {
   // Priors
-  sigma ~ gamma(20, 2);
-  rho ~ uniform(0, 1000);
-  decay_rate_space ~ gamma(20, 2);
+  sigma ~ gamma(5, 1);
+  rho ~ gamma(5, 1);
+  decay_rate_space ~ gamma(5, 1);
 
   // Prior for log_beta_diag
   log_beta_diag ~ multi_normal(rep_vector(0, N_C), Sigma);
 
  i0 ~ beta_proportion(0.01, 50);
- p ~ beta_proportion(0.75, 5);
+ p ~ beta_proportion(0.5, 4);
  gamma ~ beta_proportion(0.8, 15);
  to_vector(u_t_logit_eta) ~ std_normal();
  to_vector(w_t_logit_eta) ~ std_normal();
