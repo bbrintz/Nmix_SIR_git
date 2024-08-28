@@ -3,7 +3,8 @@ library(cmdstanr)
 library(bayesplot)
 library(posterior)
 library(MASS)
-#tst
+library(VGAM)
+
 set.seed(31)
 #set.seed(123)
 #beta <- 1.05
@@ -39,7 +40,7 @@ for (i in 1:(N_C-1)) {
 beta=exp(log_beta)
 
 gamma <- runif(N_C, min = 0.8, max = 0.9)
-TT <- 15
+TT <- 23
 pop_size <- 1e4 * sample(1:10,N_C,TRUE)
 I_0 <- sample(10:20,N_C,TRUE)
 S_0 <- pop_size - I_0
@@ -52,8 +53,8 @@ R[1,] <- 0
 
 for (t in 1:(TT-1)){
     for (ct in  1:N_C) {
-    SI[t,ct]=rbinom(1,S[t,ct],1-exp(- sum(beta[ct,] * I[t,]/ pop_size)))
-    IR[t,ct]=rbinom(1,I[t,ct],gamma[ct])
+    SI[t,ct]=rbetabinom(1,S[t,ct],1-exp(- sum(beta[ct,] * I[t,]/ pop_size)),rho=0.0001)
+    IR[t,ct]=rbetabinom(1,I[t,ct],gamma[ct],rho=.1)
     I[t+1,ct]=I[t,ct]+SI[t,ct]-IR[t,ct]
     S[t+1,ct]=S[t,ct]-SI[t,ct]
     R[t+1,ct]=R[t,ct]+IR[t,ct]
@@ -61,14 +62,10 @@ for (t in 1:(TT-1)){
   }
 
 ii=matrix(rbinom(N_C*(TT-1),SI,p_detect),nrow=TT-1)
-#ii[which(ii==0)]=round(runif(sum(ii==0),1,5))
 
 matplot(ii, type="l")
 
-tt <- cmdstan_model("stoch_beta_spatial_SI.stan")
-head((apply(I,2,cumsum) - apply(R,2,cumsum)))
-tail((apply(I,2,cumsum) - apply(R,2,cumsum)))
-(pop_size - S[TT,]) / pop_size
+tt <- cmdstan_model("stoch_beta_spatial_SI_betabin.stan")
 
 dat <- 
   list(
@@ -89,6 +86,7 @@ fit <- tt$sample(data = dat, chains = 4,
                                   #b_od = rgamma(N_C-2, 4, 4),
                                   #b_self = rgamma(N_C, 4, 4),
                                   i0 = rbeta(N_C, 0.01*50, 0.99*50),
+                                  rho_si = runif(1, 0.0001, 0.005),
                                   gamma = rbeta(N_C, 0.7 * 6, 0.3 * 6))},
                  iter_warmup = 1000,
                  iter_sampling = 1000, parallel_chains = 4,
@@ -172,7 +170,23 @@ hist(rgamma(1e6,2, 2),freq=FALSE,breaks=100, border = NA,
 hist(fit$draws("rho"),freq=FALSE,col=rgb(1,0,0,0.5),add=TRUE,border = NA)
 abline(v = rho,col="black")
 
+lims <- hist(fit$draws("rho_ir"),plot=FALSE)
+ymax <- lims$density |> max()
+hist(rgamma(1e6,2, 2),freq=FALSE,breaks=100, border = NA,
+     main = "Prior (grey) vs. posterior (red) for prob of detection",
+     xlab = "p", ylim = c(0,ymax+1))
+hist(fit$draws("rho_ir"),freq=FALSE,col=rgb(1,0,0,0.5),add=TRUE,border = NA)
+abline(v = rho_si,col="black")
 
+lims <- hist(fit$draws("rho_si"),plot=FALSE)
+ymax <- lims$density |> max()
+hist(rgamma(1e6,2, 2),freq=FALSE,breaks=100, border = NA,
+     main = "Prior (grey) vs. posterior (red) for prob of detection",
+     xlab = "p", ylim = c(0,ymax+1))
+hist(fit$draws("rho_si"),freq=FALSE,col=rgb(1,0,0,0.5),add=TRUE,border = NA)
+abline(v = rho_ir,col="black")
+
+fit$draws("rho_si") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
 
 
 plot(fit$summary("b")$mean, as.vector(beta))
