@@ -78,7 +78,7 @@ dat <-
 
 fit <- tt$sample(data = dat, chains = 4,
                  adapt_delta = 0.95,
-                 max_treedepth = 12,
+                 max_treedepth = 14,
                  init = \() {list(u_t_logit_eta = matrix(qlogis(rbeta(TT*N_C, 1, 9)), TT, N_C),
                                   w_t_logit_eta = matrix(qlogis(rbeta(TT*N_C, 1, 9)), TT, N_C),
                                   p = rbeta(1, 4, 4),

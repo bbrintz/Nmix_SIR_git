@@ -51,15 +51,17 @@ for(i in 1:12){
   }
 } 
 
-dat_final  %>% filter(date<ymd("2021/12/20"), Admin2 %in% c("Salt Lake","Utah","Davis","Weber-Morgan")) %>% ggplot(aes(x=date,y=new_cases)) + geom_line() + facet_wrap(~Admin2) + theme_minimal() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+dat_final  %>% 
+filter(#date<ymd("2021/12/20"), 
+Admin2 %in% c("Salt Lake","Utah","Davis","Weber-Morgan")) %>% ggplot(aes(x=date,y=new_cases)) + geom_line() + facet_wrap(~Admin2) + theme_minimal() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
-d1=dat_final %>% filter(date<ymd("2020/8/20")) %>% 
+d1=dat_final %>% #filter(date<ymd("2020/8/20")) %>% 
 ungroup() %>% rename(County="Admin2") %>% left_join(pop,by="County") %>% arrange(desc(Population_2020),date) %>%
 dplyr::select(-Population_2020,-Latitude,-Longitude,-cases) %>% pivot_wider(names_from=County,values_from=new_cases) %>%
 dplyr::select(-date)
 #d1[3,12]=0
 
-tt <- cmdstan_model("stoch_beta_spatial_SI_utah.stan")
+tt <- cmdstan_model("stoch_beta_spatial_SI_utah_betabin.stan")
 
 d1[6,9]=2
 d1=d1 %>% dplyr::select(`Salt Lake`,Utah,Davis,`Weber-Morgan`)
@@ -88,6 +90,7 @@ fit <- tt$sample(data = dat, chains = 4,
                                   #b_od = rgamma(N_C-2, 4, 4),
                                   #b_self = rgamma(N_C, 4, 4),
                                   i0 = rbeta(N_C, 0.01*50, 0.99*50),
+                                  rho_si = runif(1, 0.0001, 0.005),
                                   gamma = rbeta(N_C, 0.7 * 6, 0.3 * 6))},
                  iter_warmup = 1000,
                  iter_sampling = 1000, parallel_chains = 4,
