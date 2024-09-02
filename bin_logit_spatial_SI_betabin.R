@@ -15,6 +15,7 @@ N_C <- 20
 #  plogis(0)
 
 
+
 # Spatial parameters
 # Parameters
 sigma <- .05 # Standard deviation of noise

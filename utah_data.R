@@ -52,10 +52,11 @@ for(i in 1:12){
 } 
 
 dat_final  %>% 
-filter(#date<ymd("2021/12/20"), 
-Admin2 %in% c("Salt Lake","Utah","Davis","Weber-Morgan")) %>% ggplot(aes(x=date,y=new_cases)) + geom_line() + facet_wrap(~Admin2) + theme_minimal() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+filter(date<ymd("2020/8/20")) %>%#, 
+#Admin2 %in% c("Salt Lake","Utah","Davis","Weber-Morgan")) %>% 
+ggplot(aes(x=date,y=new_cases)) + geom_line() + facet_wrap(~Admin2) + theme_minimal() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
-d1=dat_final %>% #filter(date<ymd("2020/8/20")) %>% 
+d1=dat_final %>% filter(date<ymd("2020/8/19")) %>% 
 ungroup() %>% rename(County="Admin2") %>% left_join(pop,by="County") %>% arrange(desc(Population_2020),date) %>%
 dplyr::select(-Population_2020,-Latitude,-Longitude,-cases) %>% pivot_wider(names_from=County,values_from=new_cases) %>%
 dplyr::select(-date)
@@ -63,20 +64,21 @@ dplyr::select(-date)
 
 tt <- cmdstan_model("stoch_beta_spatial_SI_utah_betabin.stan")
 
-d1[6,9]=2
-d1=d1 %>% dplyr::select(`Salt Lake`,Utah,Davis,`Weber-Morgan`)
+d1[6,9]=1
+#d1=d1 %>% dplyr::select(`Salt Lake`,Utah,Davis,`Weber-Morgan`)
 
     TT = nrow(d1)+1
-    N_C = ncol(d1)
 
-
+#1,2,3,8 for 4 counties # dist/100
+counties=c(1,2,3,4,5,6,7,8,10,11,12) # dist/10
+N_C = length(counties)#ncol(d1)
 dat <- 
   list(
-    ii = as.matrix(d1),
+    ii = as.matrix(d1)[,counties],
     TT = TT,
     N_C = N_C,
-    pop_size = pop$Population_2020[1:N_C],
-    D=dist[1:N_C,1:N_C]
+    pop_size = pop$Population_2020[counties],
+    D=dist[counties,counties]/10
   )
 
 set.seed(123)
@@ -91,12 +93,19 @@ fit <- tt$sample(data = dat, chains = 4,
                                   #b_self = rgamma(N_C, 4, 4),
                                   i0 = rbeta(N_C, 0.01*50, 0.99*50),
                                   rho_si = runif(1, 0.0001, 0.005),
+                                  #decay_rate_space = rgamma(1, 2, 2),
                                   gamma = rbeta(N_C, 0.7 * 6, 0.3 * 6))},
                  iter_warmup = 1000,
                  iter_sampling = 1000, parallel_chains = 4,
-                 step_size = 1.5e-3)
+                 step_size = 1.5e-3,
+                 output_dir = "./output_11")
+saveRDS(fit,"./output_11/fit.rds")
 
-fit$summary()
+fit=readRDS("./output_11/fit.rds")
+fit$summary() 
+fit$summary("p")
+
+
 
 lims <- hist(fit$draws("p"),plot=FALSE)
 ymax <- lims$density |> max()
@@ -129,14 +138,14 @@ ylims <- range(c(
 ))
 matplot(dat$ii[,idx], xlab = "Time", 
      ylab = "Prevalence", main = "Latent prevalence v. time first 2 cties",
-     pch = 19,ylim=ylims)
+     pch = 19,ylim=ylims) 
 matlines(sweep(mean(z_t_d)[-1,],MARGIN = 2, STATS = dat$pop_size, FUN = "*")[,idx],lty=1)
 matlines(sweep(qpt025[1,-1,],MARGIN = 2, STATS = dat$pop_size, FUN = "*")[,idx],lty=2)
 matlines(sweep(qpt975[1,-1,],MARGIN = 2, STATS = dat$pop_size, FUN = "*")[,idx],lty=2)
 
 
 np_fit <- nuts_params(fit)
-mcmc_pairs(fit$draws(c("p","i0","gamma","beta")), np = np_fit, pars = c("p","gamma[3]","beta[1,1]","gamma[4]","beta[1,2]"),
+mcmc_pairs(fit$draws(c("p","decay_rate_space","gamma","beta","rho_si")), np = np_fit, pars = c("p","beta[1,1]","decay_rate_space","beta[1,2]","rho_si"),
            off_diag_args = list(size = 0.75))
 
 

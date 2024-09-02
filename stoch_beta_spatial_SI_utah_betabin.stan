@@ -14,7 +14,7 @@ parameters {
   vector<lower=0, upper=1>[N_C] gamma;
   real<lower=0> sigma; // Standard deviation of noise
   real<lower=0> rho; // Spatial range parameter
-  real<lower=0,upper=1> rho_si; // Spatial range parameter
+  real<lower=0,upper=.01> rho_si; // Spatial range parameter
   real<lower=0,upper=1> rho_ir; // Spatial range parameter
   real<lower=0> decay_rate_space; // Spatial decay rate
   vector[N_C] log_beta_diag; // Diagonal elements of log_beta
@@ -78,11 +78,11 @@ transformed parameters {
 }
 model {
   // Priors
-  sigma ~ gamma(5, 1);
-  rho ~ gamma(5, 1);
-  rho_ir ~ gamma(2, 2);
+  sigma ~ gamma(2, 2);
+  rho ~ gamma(2, 2);
+  rho_ir ~ uniform(0, 1);
   rho_si ~ uniform(0,.01);//gamma(2, 2);
-  decay_rate_space ~ gamma(5, 1);
+  decay_rate_space ~ gamma(2,2);//uniform(0, 1);
 
   // Prior for log_beta_diag
   log_beta_diag ~ multi_normal(rep_vector(0, N_C), Sigma);
