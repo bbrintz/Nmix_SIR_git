@@ -82,7 +82,7 @@ model {
   // Priors
   sigma ~ gamma(2, 2);
   rho ~ gamma(2, 2);
-  rho_ir ~ gamma(2, 2);
+  rho_ir ~ uniform(0,1); //gamma(2, 2);
   rho_si ~ uniform(0,.01);//gamma(2, 2);
   decay_rate_space ~ gamma(2, 2);
 

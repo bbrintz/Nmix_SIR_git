@@ -1,0 +1,66 @@
+
+{
+  "stan_major_version" : "2",
+  "stan_minor_version" : "35",
+  "stan_patch_version" : "0",
+  "model_name" : "stoch_beta_spatial_SI_utah_betabin_model",
+  "start_datetime" : "2024-09-03 18:55:18 UTC",
+  "method" : {
+    "value" : "sample",
+    "sample" : {
+      "num_samples" : 1500,
+      "num_warmup" : 1500,
+      "save_warmup" : false,
+      "thin" : 1,
+      "adapt" : {
+        "engaged" : true,
+        "gamma" : 0.05,
+        "delta" : 0.99,
+        "kappa" : 0.75,
+        "t0" : 10,
+        "init_buffer" : 75,
+        "term_buffer" : 50,
+        "window" : 25,
+        "save_metric" : true
+      },
+      "algorithm" : {
+        "value" : "hmc",
+        "hmc" : {
+          "engine" : {
+            "value" : "nuts",
+            "nuts" : {
+              "max_depth" : 15
+            }
+          },
+          "metric" : {
+            "value" : "diag_e"
+          },
+          "metric_file" : "",
+          "stepsize" : 0.0015,
+          "stepsize_jitter" : 0
+        }
+      },
+      "num_chains" : 1
+    }
+  },
+  "id" : 8,
+  "data" : {
+    "file" : "\/var\/folders\/1k\/9yy62ckj3811gx4gtcf3nbww0000gq\/T\/RtmpWLf9ZM\/standata-47475ff51dff.json"
+  },
+  "init" : "\/var\/folders\/1k\/9yy62ckj3811gx4gtcf3nbww0000gq\/T\/RtmpWLf9ZM\/init-474755848190_8.json",
+  "random" : {
+    "seed" : 1325210717
+  },
+  "output" : {
+    "file" : "\/Users\/u6020766\/Library\/CloudStorage\/Box-Box\/Brintz, Ben - SDBC\/Nmix_SIR\/Nmix_SIR_git\/.\/output_4\/stoch_beta_spatial_SI_utah_betabin-202409031255-8-498101.csv",
+    "diagnostic_file" : "",
+    "refresh" : 100,
+    "sig_figs" : -1,
+    "profile_file" : "\/Users\/u6020766\/Library\/CloudStorage\/Box-Box\/Brintz, Ben - SDBC\/Nmix_SIR\/Nmix_SIR_git\/.\/output_4\/stoch_beta_spatial_SI_utah_betabin-profile-202409031255-8-70b243.csv",
+    "save_cmdstan_config" : true
+  },
+  "num_threads" : 1,
+  "mpi_enabled" : false,
+  "stanc_version" : "stanc3 v2.35.0",
+  "stancflags" : "--name=stoch_beta_spatial_SI_utah_betabin_model"
+}

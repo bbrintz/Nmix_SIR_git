@@ -9,60 +9,70 @@ set.seed(31)
 #set.seed(123)
 #beta <- 1.05
 #TT <- 100
-N_C <- 20 
+N_C <- 4
 
 #  p=plogis(peta0 + peta1 * tests/1000)
 #  plogis(0)
 
-
+#Simulation parameters:
+# p = .25, .4, .7
+# sigma = .15
+# rho = 1 
+# decay_rate_space = 1.1
+# gamma[N_C] = .75 - .9
+# beta
 
 # Spatial parameters
 # Parameters
-sigma <- .05 # Standard deviation of noise
-rho <- 1.2  # Spatial range parameter
-decay_rate_space <- 2 # Spatial decay rate
+sigma <- .326#.15#.05 # Standard deviation of noise
+rho <- 1#1.2  # Spatial range parameter
+decay_rate_space <- 1.2#2 # Spatial decay rate
+rho_si = .0004
+rho_ir = .35
+
 
 DiffsMat=expand.grid(1:N_C, 1:N_C) #%>% mutate(dist=abs(Var1-Var2))
 DiffsMat %>% mutate(dist=abs(Var1-Var2)) -> D
 
-D <- matrix(D$dist,nrow=N_C)
-Sigma <- sigma^2 * exp(-D / rho)
-log_beta_diag=mvrnorm(1, rep(0.2, N_C), Sigma);log_beta_diag
+D <- dist[counties,counties]#matrix(D$dist,nrow=N_C)
+Sigma <- sigma^2 * exp(-(D/10) / rho)
+log_beta_diag=mvrnorm(1, rep(0, N_C), Sigma);log_beta_diag
 log_beta = matrix(0, N_C, N_C)
 diag(log_beta)=log_beta_diag
 
 for (i in 1:(N_C-1)) {
   for (j in (i+1):(N_C)) {
-    distance_from_center <- abs(i - j)
+    distance_from_center <- D[i,j]/10#abs(i - j)
     log_beta[i, j] <- log_beta[i, i] - decay_rate_space * distance_from_center
     log_beta[j, i] <- log_beta[i, j]
   }
 }
 beta=exp(log_beta)
 
-gamma <- runif(N_C, min = 0.8, max = 0.9)
-TT <- 23
-pop_size <- 1e4 * sample(1:10,N_C,TRUE)
-I_0 <- sample(10:20,N_C,TRUE)
+gamma <- runif(N_C, min = 0.75, max = 0.85)
+TT <- 18
+pop_size <- pop$Population_2020[counties]#1e4 * sample(1:10,N_C,TRUE)
+I_0 <- c(8500,5000,420,690)#ample(10:20,N_C,TRUE)
 S_0 <- pop_size - I_0
 R <- S <- I <- matrix(NA_real_,TT, N_C)
 ii <- SI <- IR <- matrix(NA_real_,TT-1, N_C)
-p_detect <- 0.7
+p_detect <- 0.4
 S[1,] <- S_0
 I[1,] <- I_0
 R[1,] <- 0 
 
 for (t in 1:(TT-1)){
     for (ct in  1:N_C) {
-    SI[t,ct]=rbetabinom(1,S[t,ct],1-exp(- sum(beta[ct,] * I[t,]/ pop_size)),rho=0.0001)
-    IR[t,ct]=rbetabinom(1,I[t,ct],gamma[ct],rho=.1)
+    SI[t,ct]=rbetabinom(1,S[t,ct],1-exp(- sum(beta[ct,] * I[t,]/ pop_size)),rho=rho_si)
+    IR[t,ct]=rbetabinom(1,I[t,ct],gamma[ct],rho=rho_ir)
     I[t+1,ct]=I[t,ct]+SI[t,ct]-IR[t,ct]
     S[t+1,ct]=S[t,ct]-SI[t,ct]
     R[t+1,ct]=R[t,ct]+IR[t,ct]
   }
   }
 
-ii=matrix(rbinom(N_C*(TT-1),SI,p_detect),nrow=TT-1)
+
+ii=matrix(rbinom(N_C*(TT-1),SI,p_detect),nrow=TT-1);ii
 
 matplot(ii, type="l")
 
@@ -74,9 +84,10 @@ dat <-
     TT = TT,
     N_C = N_C,
     pop_size = pop_size,
-    D=D
+    D=D/10
   )
 
+seed(123)
 fit <- tt$sample(data = dat, chains = 4,
                  adapt_delta = 0.95,
                  max_treedepth = 14,
