@@ -85,7 +85,7 @@ model {
   decay_rate_space ~ gamma(2,2);//uniform(0, 1);
 
   // Prior for log_beta_diag
-  log_beta_diag ~ multi_normal(rep_vector(0, N_C), Sigma);
+log_beta_diag ~ multi_normal(rep_vector(0, N_C), Sigma);
 
  i0 ~ beta_proportion(0.01, 50);
  p ~ beta_proportion(0.5, 4);

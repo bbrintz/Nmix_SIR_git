@@ -1,6 +1,5 @@
 library(tidyverse)
 library(cmdstanr)
-
 library(bayesplot)
 library(posterior)
 case = read_csv("./data/time_series_covid19_confirmed_US.csv") %>% filter(`Province_State`=="Utah")
@@ -69,8 +68,9 @@ d1[6,9]=1
 
     TT = nrow(d1)+1
 
-#1,2,3,8 for 4 counties # dist/100
-counties=c(1,2,3,4,5,6,7,8,10,11,12) # dist/10
+#1,2,3,8 for 4 counties # dist/10
+#counties=c(1,2,3,4,5,6,7,8,10,11,12) # dist/10
+counties=c(1,2,3,8)
 N_C = length(counties)#ncol(d1)
 dat <- 
   list(
@@ -81,10 +81,12 @@ dat <-
     D=dist[counties,counties]/10
   )
 
+? cmdstanr::cmdstan_model
+
 set.seed(123)
-fit <- tt$sample(data = dat, chains = 4,
-                 adapt_delta = 0.95,
-                 max_treedepth = 14,
+fit <- tt$sample(data = dat, chains = 10,
+                 adapt_delta = 0.99,
+                 max_treedepth = 15,
                  init = \() {list(u_t_logit_eta = matrix(qlogis(rbeta(TT*N_C, 1, 9)), TT, N_C),
                                   w_t_logit_eta = matrix(qlogis(rbeta(TT*N_C, 1, 9)), TT, N_C),
                                   p = rbeta(1, 4, 4),
@@ -95,27 +97,40 @@ fit <- tt$sample(data = dat, chains = 4,
                                   rho_si = runif(1, 0.0001, 0.005),
                                   #decay_rate_space = rgamma(1, 2, 2),
                                   gamma = rbeta(N_C, 0.7 * 6, 0.3 * 6))},
-                 iter_warmup = 1000,
-                 iter_sampling = 1000, parallel_chains = 4,
+                 iter_warmup = 1500,
+                 iter_sampling = 1500, parallel_chains = 10,
                  step_size = 1.5e-3,
-                 output_dir = "./output_11")
-saveRDS(fit,"./output_11/fit.rds")
+                 output_dir = "./output_4")
+saveRDS(fit,"./output_4/fit_10chn.rds")
 
-fit=readRDS("./output_11/fit.rds")
-fit$summary() 
+fit=readRDS("./output_11/fit_10chn.rds")
+#fit=readRDS("./output_4/fit.rds")
+
+fit$summary("sigma") 
 fit$summary("p")
-
+fit$diagnostic_summary()
 
 
 lims <- hist(fit$draws("p"),plot=FALSE)
 ymax <- lims$density |> max()
-hist(rbeta(1e6,0.75 * 5, 0.25 * 5),freq=FALSE,breaks=100, border = NA,
+hist(rbeta(1e6,0.5 * 4, 0.5 * 4),freq=FALSE,breaks=100, border = NA,
      main = "Prior (grey) vs. posterior (red) for prob of detection",
      xlab = "p", ylim = c(0,ymax+1))
 hist(fit$draws("p"),freq=FALSE,col=rgb(1,0,0,0.5),add=TRUE,border = NA)
 
+png("four_county_p.png")
+ggplot() + 
+geom_histogram(data=data.frame(p=rbeta(1e6,0.5 * 4, 0.5 * 4)),
+aes(x=p,..density..),alpha=.25,fill="grey",linetype=2) +
+geom_histogram(data=fit$draws("p") %>% as_tibble %>% gather() %>% mutate(key=factor(key)), 
+aes(x=value,y=..density..,fill=1),alpha=0.75) + 
+scale_fill_viridis_c() +
+theme_minimal() +
+theme(legend.position="none")
+dev.off()
 
-fit$draws("p") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
+
+fit$draws("p") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1500,10),group=key,color=key)) + geom_line()
 fit$draws("beta[3,3]") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
 
 fit$draws("beta[1,1]") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
@@ -126,6 +141,8 @@ fit$draws("gamma[3]") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:
 fit$draws("rho") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
 fit$draws("decay_rate_space") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
 
+
+fit$draws("si_t") %>% as_tibble()
 
 z_t_d <- fit$draws("si_t", format = "draws_array") |> posterior::as_draws_rvars()
 z_t_d <- z_t_d$si_t
@@ -142,6 +159,21 @@ matplot(dat$ii[,idx], xlab = "Time",
 matlines(sweep(mean(z_t_d)[-1,],MARGIN = 2, STATS = dat$pop_size, FUN = "*")[,idx],lty=1)
 matlines(sweep(qpt025[1,-1,],MARGIN = 2, STATS = dat$pop_size, FUN = "*")[,idx],lty=2)
 matlines(sweep(qpt975[1,-1,],MARGIN = 2, STATS = dat$pop_size, FUN = "*")[,idx],lty=2)
+
+obs=rbind(data.frame(value="mean",sweep(mean(z_t_d)[-1,],MARGIN = 2, STATS = dat$pop_size, FUN = "*")[,idx]),
+data.frame(value="lwr",sweep(qpt025[1,-1,],MARGIN = 2, STATS = dat$pop_size, FUN = "*")[,idx]),
+data.frame(value="upr",sweep(qpt975[1,-1,],MARGIN = 2, STATS = dat$pop_size, FUN = "*")[,idx])) %>%
+rename(`Salt Lake`=X1,Utah=X2,Davis=X3,Summit=X4) %>% gather(County,Cases,-value) %>% 
+pivot_wider(names_from=value,values_from=Cases) %>% unnest() %>% mutate(date=rep(dts,4))
+
+dts=unique(dat_final %>% filter(date<ymd("2020/8/19")) %>% pull(date))
+png("inf_est_4.png")
+dat$ii %>% as_tibble() %>% mutate(date=dts) %>%  gather(County,Cases,-date) %>% 
+ggplot(aes(x=date,y=Cases,color=County)) + geom_point() + facet_wrap(~County) + 
+geom_line(data=obs,aes(x=date,y=mean),color="black") + geom_line(data=obs,aes(x=date,y=lwr),linetype=2,color="black") + 
+geom_line(data=obs,aes(x=date,y=upr),linetype=2,color="black") +
+ theme_minimal() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+dev.off()
 
 
 np_fit <- nuts_params(fit)
@@ -163,3 +195,4 @@ bet=(1-mu)*kappa
 hist(rbeta(1e6,alp,bet),freq=FALSE,breaks=100, border = NA,
      main = "Prior (grey) vs. posterior (red) for prob of detection",
      xlab = "p", ylim = c(0,ymax+1))
+
