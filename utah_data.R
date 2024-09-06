@@ -103,7 +103,7 @@ fit <- tt$sample(data = dat, chains = 10,
                  output_dir = "./output_4")
 saveRDS(fit,"./output_4/fit_10chn.rds")
 
-fit=readRDS("./output_4/fit_10chn.rds")
+fit=readRDS("./output_11/fit_10chn.rds")
 #fit=readRDS("./output_4/fit.rds")
 
 fit$summary("sigma") 

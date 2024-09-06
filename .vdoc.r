@@ -177,6 +177,11 @@ a/b
 #
 #
 #
+
+fit=readRDS(paste0("./output_",4,"/fit_10chn.rds"))
+fit2=readRDS(paste0("./output_",11,"/fit_10chn.rds"))
+
+
 a=ggplot() + 
 geom_histogram(data=data.frame(p=rbeta(1e6,0.5 * 4, 0.5 * 4)),
 aes(x=p,..density..),alpha=.25,fill="grey",linetype=2) +
