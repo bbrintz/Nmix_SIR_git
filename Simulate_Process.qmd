@@ -1,0 +1,153 @@
+---
+title: "Simulated Data"
+format: html
+editor: source
+---
+
+## Starting point
+
+This code is from bin_logit_spatial_SI_betabin.R. It has 20 counties and assumes a spatial structure for contact rate `beta`. Recovery rate `gamma` varies randomly among counties. Random movement between compartments is beta-binomial, not binomial. Population size is also random from 10,000 to 100,000 (integer multiples of 10,000).
+
+```{r, warning=FALSE, message=FALSE}
+library(ggplot2)
+library(tidyverse)
+library(MASS)
+library(VGAM)
+
+set.seed(31)
+#set.seed(123)
+#beta <- 1.05
+#TT <- 100
+N_C <- 20
+
+#  p=plogis(peta0 + peta1 * tests/1000)
+#  plogis(0)
+
+# Spatial parameters
+# Parameters
+sigma <- .05 # Standard deviation of noise
+rho <- 1.2  # Spatial range parameter
+decay_rate_space <- 2 # Spatial decay rate
+
+DiffsMat=expand.grid(1:N_C, 1:N_C) #%>% mutate(dist=abs(Var1-Var2))
+DiffsMat %>% mutate(dist=abs(Var1-Var2)) -> D
+
+D <- matrix(D$dist,nrow=N_C)
+Sigma <- sigma^2 * exp(-D / rho)
+log_beta_diag=mvrnorm(1, rep(0.2, N_C), Sigma);log_beta_diag
+log_beta = matrix(0, N_C, N_C)
+diag(log_beta)=log_beta_diag
+
+for (i in 1:(N_C-1)) {
+  for (j in (i+1):(N_C)) {
+    distance_from_center <- abs(i - j)
+    log_beta[i, j] <- log_beta[i, i] - decay_rate_space * distance_from_center
+    log_beta[j, i] <- log_beta[i, j]
+  }
+}
+beta=exp(log_beta)
+
+gamma <- runif(N_C, min = 0.8, max = 0.9)
+TT <- 23
+pop_size <- 1e4 * sample(1:10,N_C,TRUE)
+I_0 <- sample(10:20,N_C,TRUE)
+S_0 <- pop_size - I_0
+R <- S <- I <- matrix(NA_real_,TT, N_C)
+ii <- SI <- IR <- matrix(NA_real_,TT-1, N_C)
+p_detect <- 0.7
+S[1,] <- S_0
+I[1,] <- I_0
+R[1,] <- 0 
+
+for (t in 1:(TT-1)){
+    for (ct in  1:N_C) {
+    SI[t,ct]=rbetabinom(1,S[t,ct],
+                        1-exp(- sum(beta[ct,] * I[t,]/ pop_size)),
+                        rho=0.0001) # pretty close to binomial.
+    IR[t,ct]=rbetabinom(1,I[t,ct],gamma[ct],rho=.1)
+    I[t+1,ct]=I[t,ct]+SI[t,ct]-IR[t,ct]
+    S[t+1,ct]=S[t,ct]-SI[t,ct]
+    R[t+1,ct]=R[t,ct]+IR[t,ct]
+  }
+  }
+
+ii=matrix(rbinom(N_C*(TT-1),SI,p_detect),nrow=TT-1)
+
+matplot(ii, type="l")
+```
+
+## Simple situation with reinfections
+
+Simplify things by taking just one county, constant binomial contact rate `beta=1.2`, constant binomial recovery rate `gamma=0.8`, and constant binomial probability of moving from recovered to susceptible (`delta=0.2`). Introduce beta-binomial correlation parameters for each rate (`rho_beta`, `rho_gamma`, `rho_delta`).
+
+```{r}
+N_C <- 1 # number of counties
+TT <- 50 # number of time periods
+
+pop_size <- 1e4 # fixed size of population
+I_0 <- sample(10:20,N_C,TRUE) # initial number of infections
+S_0 <- pop_size - I_0 # initial number of susceptibles
+
+# matrices for underlying true counts in compartments
+# I=infected
+# S=susceptible
+# R=recovered
+R <- S <- I <- matrix(NA_real_,TT, N_C) 
+
+# matrices for counts moving between compartments
+# RS=number moving from recovered to susceptible
+# SI=number moving from susceptible to infected
+# IR=number moving from infected to recovered
+
+RS <- SI <- IR <- matrix(NA_real_,TT-1, N_C)
+ii <- matrix(NA_real_,TT-1, N_C) # observed cases
+
+# initial values for the compartment matrices
+S[1,] <- S_0
+I[1,] <- I_0
+R[1,] <- 0 
+
+# parameters for binomial probabilities of moving between compartments
+beta <- 1.2 # contact rate: P(go from S to I)=1-exp(beta*I/pop_size)
+gamma <- 0.8 # recovery rate=P(go from I to R)
+delta <- 0.2 # P(go from R to S)
+
+# beta-binomial correlation parameters rho for random moves
+# between compartments
+rho_beta <- 0.0001
+rho_gamma <- 0.1
+rho_delta <- 0.1
+
+# detection parameters
+p_detect <- 0.7 # detection probability
+
+# Step through the time periods and the counties, moving counts
+# between compartments.
+for (t in 1:(TT-1)){
+  for (ct in  1:N_C) {
+    SI[t,ct]=rbetabinom(1,S[t,ct],
+                        1-exp(- sum(beta*I[t,]/pop_size)),
+                        rho=rho_beta)
+    IR[t,ct]=rbetabinom(1,I[t,ct],gamma,rho=rho_gamma)
+    RS[t,ct]=rbetabinom(1,R[t,ct],delta,rho=rho_delta)
+    I[t+1,ct]=I[t,ct]+SI[t,ct]-IR[t,ct]
+    S[t+1,ct]=S[t,ct]-SI[t,ct]+RS[t,ct]
+    R[t+1,ct]=R[t,ct]+IR[t,ct]-RS[t,ct]
+  }
+}
+
+# observed new cases
+ii=matrix(rbinom(N_C*(TT-1),SI,p_detect),nrow=TT-1)
+
+matplot(ii, type="l")
+```
+
+Plot the counts in the compartments over time.
+
+```{r}
+data.frame(t=1:TT,I=I[,1],S=S[,1],R=R[,1]) %>%
+  pivot_longer(cols=c(I,S,R),
+               names_to="compartment",
+               values_to="count") %>%
+  ggplot(aes(x=t, y=count, color=compartment)) + geom_line()
+```
