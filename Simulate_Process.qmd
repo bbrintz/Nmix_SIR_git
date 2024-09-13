@@ -82,28 +82,28 @@ Simplify things by taking just one county, constant binomial contact rate `beta=
 
 ```{r}
 N_C <- 1 # number of counties
-TT <- 50 # number of time periods
+TT <- 200 # number of time periods
 
 pop_size <- 1e4 # fixed size of population
 I_0 <- sample(10:20,N_C,TRUE) # initial number of infections
 S_0 <- pop_size - I_0 # initial number of susceptibles
 
 # matrices for underlying true counts in compartments
-# I=infected
+# I=infective
 # S=susceptible
 # R=recovered
 R <- S <- I <- matrix(NA_real_,TT, N_C) 
 
 # matrices for counts moving between compartments
 # RS=number moving from recovered to susceptible
-# SI=number moving from susceptible to infected
-# IR=number moving from infected to recovered
+# SI=number moving from susceptible to infective
+# IR=number moving from infective to recovered
 
 RS <- SI <- IR <- matrix(NA_real_,TT-1, N_C)
 ii <- matrix(NA_real_,TT-1, N_C) # observed cases
 
 # initial values for the compartment matrices
-S[1,] <- S_0
+S[1,] <- S_0 
 I[1,] <- I_0
 R[1,] <- 0 
 
@@ -113,7 +113,7 @@ gamma <- 0.8 # recovery rate=P(go from I to R)
 delta <- 0.2 # P(go from R to S)
 
 # beta-binomial correlation parameters rho for random moves
-# between compartments
+# between compartments. Close to 0 is close to usual binomial.
 rho_beta <- 0.0001
 rho_gamma <- 0.1
 rho_delta <- 0.1
@@ -147,6 +147,91 @@ Plot the counts in the compartments over time.
 ```{r}
 data.frame(t=1:TT,I=I[,1],S=S[,1],R=R[,1]) %>%
   pivot_longer(cols=c(I,S,R),
+               names_to="compartment",
+               values_to="count") %>%
+  ggplot(aes(x=t, y=count, color=compartment)) + geom_line()
+```
+## More compartments
+
+Try adding an exposed compartment and multiple recovered compartments. Assume that people move through the recovered compartments sequentially.
+
+```{r}
+# matrices for exposed compartment and for movement from susceptible 
+# to exposed and from exposed to infected.
+E <- matrix(NA_real_,TT, N_C) # exposed
+SE <- EI <- matrix(NA_real_,TT-1, N_C) # movement
+
+# array for counts in each recovered compartment for each time period and each county
+NRC <- 3 # number of recovered compartments
+R_array <- array(data = NA_real_, dim=c(NRC, TT, N_C))
+
+# array for movement through recovered compartments
+RR_array <- array(data=NA_real_, dim=c(NRC-1, TT-1, N_C))
+
+# parameters for binomial probabilities of moving from E to I and
+# from one recovered compartment to the next
+eta <- 0.7 # probability of becoming infective after exposure
+theta <- 0.1 # probability of advancing to next recovered compartment
+
+# beta-binomial correlation parameters rho for movement distributions
+rho_eta <- 0.001
+rho_theta <- 0.0001
+
+# initial counts for new model
+E_0 <- sample(10:20, N_C, TRUE) # initial number of exposed
+E[1,] <- E_0
+S_0 <- pop_size - I_0 - E_0 # initial number of susceptible
+S[1,] <- S_0
+R_array[,1,] <- 0 # initial number of recovered
+```
+
+For this model, `beta` and `rho_beta` will be the exposure parameters, `gamma` and `rho_gamma` will be the parameters governing movement from infected to the first recovered compartment, and `delta` and `rho_delta` will be the parameters governing movement from the last recovered compartment to the susceptible compartment.
+
+```{r}
+# Step through time periods and counties, generating random movements
+# and updating counts in compartments.
+for (t in 1:(TT-1)){
+  for (ct in  1:N_C) {
+    (SE[t,ct]=rbetabinom(1,S[t,ct],
+                        1-exp(- sum(beta*I[t,]/pop_size)),
+                        rho=rho_beta))
+    (EI[t,ct]=rbetabinom(1,E[t,ct],eta,rho_eta))
+    (IR[t,ct]=rbetabinom(1,I[t,ct],gamma,rho=rho_gamma))
+    
+    # Movements from one recovered compartment to the next, not including the last,
+    # since people go from the last recovered compartment to the susceptible compartment.
+    for (cmp in 1:(NRC-1)) {
+      (RR_array[cmp,t,ct] <- rbetabinom(1,R_array[cmp,t,ct],
+                                       theta,rho_theta))
+    }
+    # Movement from the last recovered compartment to susceptible
+    (RS[t,ct]=rbetabinom(1,R_array[NRC,t,ct],delta,rho=rho_delta))
+
+    # Counts at the next time step are the previous time's counts +/- movement.
+    R_array[1,t+1,ct] <- R_array[1,t,ct]+IR[t,ct]-RR_array[1,t,ct]
+    for (cmp in 2:(NRC-1)) {
+      (R_array[cmp,t+1,ct] <- R_array[cmp,t,ct] + RR_array[cmp-1,t,ct] 
+                                               - RR_array[cmp,t,ct])
+    }
+    (R_array[NRC,t+1,ct] <- R_array[NRC,t,ct] + RR_array[NRC-1,t,ct] - RS[t,ct])
+    (S[t+1,ct]=S[t,ct]-SE[t,ct]+RS[t,ct])
+    (E[t+1,ct]=E[t,ct]+SE[t,ct]-EI[t,ct])
+    (I[t+1,ct]=I[t,ct]+EI[t,ct]-IR[t,ct])
+  }
+}
+
+# observed new cases
+ii=matrix(rbinom(N_C*(TT-1),EI,p_detect),nrow=TT-1)
+
+matplot(ii, type="l")
+
+```
+
+Plot the counts in the compartments over time.
+
+```{r}
+data.frame(t=1:TT,I=I[,1],S=S[,1],R1=R_array[1,,1],R2=R_array[2,,1],R3=R_array[3,,1]) %>%
+  pivot_longer(cols=c(I,S,R1,R2,R3),
                names_to="compartment",
                values_to="count") %>%
   ggplot(aes(x=t, y=count, color=compartment)) + geom_line()
