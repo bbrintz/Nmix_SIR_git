@@ -185,28 +185,28 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Simplify things by taking just one county, constant binomial contact rate <code>beta=1.2</code>, constant binomial recovery rate <code>gamma=0.8</code>, and constant binomial probability of moving from recovered to susceptible (<code>delta=0.2</code>). Introduce beta-binomial correlation parameters for each rate (<code>rho_beta</code>, <code>rho_gamma</code>, <code>rho_delta</code>).</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>N_C <span class="ot">&lt;-</span> <span class="dv">1</span> <span class="co"># number of counties</span></span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>TT <span class="ot">&lt;-</span> <span class="dv">50</span> <span class="co"># number of time periods</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>TT <span class="ot">&lt;-</span> <span class="dv">200</span> <span class="co"># number of time periods</span></span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>pop_size <span class="ot">&lt;-</span> <span class="fl">1e4</span> <span class="co"># fixed size of population</span></span>
 <span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>I_0 <span class="ot">&lt;-</span> <span class="fu">sample</span>(<span class="dv">10</span><span class="sc">:</span><span class="dv">20</span>,N_C,<span class="cn">TRUE</span>) <span class="co"># initial number of infections</span></span>
 <span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>S_0 <span class="ot">&lt;-</span> pop_size <span class="sc">-</span> I_0 <span class="co"># initial number of susceptibles</span></span>
 <span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="co"># matrices for underlying true counts in compartments</span></span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="co"># I=infected</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="co"># I=infective</span></span>
 <span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a><span class="co"># S=susceptible</span></span>
-<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a><span class="co"># R=recovered/removed</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a><span class="co"># R=recovered</span></span>
 <span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>R <span class="ot">&lt;-</span> S <span class="ot">&lt;-</span> I <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="cn">NA_real_</span>,TT, N_C) </span>
 <span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a><span class="co"># matrices for counts moving between compartments</span></span>
 <span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a><span class="co"># RS=number moving from recovered to susceptible</span></span>
-<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a><span class="co"># SI=number moving from susceptible to infected</span></span>
-<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a><span class="co"># IR=number moving from infected to recovered</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a><span class="co"># SI=number moving from susceptible to infective</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a><span class="co"># IR=number moving from infective to recovered</span></span>
 <span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>RS <span class="ot">&lt;-</span> SI <span class="ot">&lt;-</span> IR <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="cn">NA_real_</span>,TT<span class="dv">-1</span>, N_C)</span>
 <span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>ii <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="cn">NA_real_</span>,TT<span class="dv">-1</span>, N_C) <span class="co"># observed cases</span></span>
 <span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a><span class="co"># initial values for the compartment matrices</span></span>
-<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>S[<span class="dv">1</span>,] <span class="ot">&lt;-</span> S_0</span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>S[<span class="dv">1</span>,] <span class="ot">&lt;-</span> S_0 </span>
 <span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>I[<span class="dv">1</span>,] <span class="ot">&lt;-</span> I_0</span>
 <span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>R[<span class="dv">1</span>,] <span class="ot">&lt;-</span> <span class="dv">0</span> </span>
 <span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a></span>
@@ -216,7 +216,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a>delta <span class="ot">&lt;-</span> <span class="fl">0.2</span> <span class="co"># P(go from R to S)</span></span>
 <span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a><span class="co"># beta-binomial correlation parameters rho for random moves</span></span>
-<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a><span class="co"># between compartments</span></span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a><span class="co"># between compartments. Close to 0 is close to usual binomial.</span></span>
 <span id="cb4-34"><a href="#cb4-34" aria-hidden="true" tabindex="-1"></a>rho_beta <span class="ot">&lt;-</span> <span class="fl">0.0001</span></span>
 <span id="cb4-35"><a href="#cb4-35" aria-hidden="true" tabindex="-1"></a>rho_gamma <span class="ot">&lt;-</span> <span class="fl">0.1</span></span>
 <span id="cb4-36"><a href="#cb4-36" aria-hidden="true" tabindex="-1"></a>rho_delta <span class="ot">&lt;-</span> <span class="fl">0.1</span></span>
@@ -262,6 +262,100 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div>
 <figure class="figure">
 <p><img src="Simulate_Process_files/figure-html/unnamed-chunk-3-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="more-compartments" class="level2">
+<h2 class="anchored" data-anchor-id="more-compartments">More compartments</h2>
+<p>Try adding an exposed compartment and multiple recovered compartments. Assume that people move through the recovered compartments sequentially.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># matrices for exposed compartment and for movement from susceptible </span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="co"># to exposed and from exposed to infected.</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>E <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="cn">NA_real_</span>,TT, N_C) <span class="co"># exposed</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>SE <span class="ot">&lt;-</span> EI <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="cn">NA_real_</span>,TT<span class="dv">-1</span>, N_C) <span class="co"># movement</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="co"># array for counts in each recovered compartment for each time period and each county</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>NRC <span class="ot">&lt;-</span> <span class="dv">3</span> <span class="co"># number of recovered compartments</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>R_array <span class="ot">&lt;-</span> <span class="fu">array</span>(<span class="at">data =</span> <span class="cn">NA_real_</span>, <span class="at">dim=</span><span class="fu">c</span>(NRC, TT, N_C))</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="co"># array for movement through recovered compartments</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>RR_array <span class="ot">&lt;-</span> <span class="fu">array</span>(<span class="at">data=</span><span class="cn">NA_real_</span>, <span class="at">dim=</span><span class="fu">c</span>(NRC<span class="dv">-1</span>, TT<span class="dv">-1</span>, N_C))</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a><span class="co"># parameters for binomial probabilities of moving from E to I and</span></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a><span class="co"># from one recovered compartment to the next</span></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>eta <span class="ot">&lt;-</span> <span class="fl">0.7</span> <span class="co"># probability of becoming infective after exposure</span></span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>theta <span class="ot">&lt;-</span> <span class="fl">0.1</span> <span class="co"># probability of advancing to next recovered compartment</span></span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a><span class="co"># beta-binomial correlation parameters rho for movement distributions</span></span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>rho_eta <span class="ot">&lt;-</span> <span class="fl">0.001</span></span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>rho_theta <span class="ot">&lt;-</span> <span class="fl">0.0001</span></span>
+<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a><span class="co"># initial counts for new model</span></span>
+<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a>E_0 <span class="ot">&lt;-</span> <span class="fu">sample</span>(<span class="dv">10</span><span class="sc">:</span><span class="dv">20</span>, N_C, <span class="cn">TRUE</span>) <span class="co"># initial number of exposed</span></span>
+<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a>E[<span class="dv">1</span>,] <span class="ot">&lt;-</span> E_0</span>
+<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a>S_0 <span class="ot">&lt;-</span> pop_size <span class="sc">-</span> I_0 <span class="sc">-</span> E_0 <span class="co"># initial number of susceptible</span></span>
+<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a>S[<span class="dv">1</span>,] <span class="ot">&lt;-</span> S_0</span>
+<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a>R_array[,<span class="dv">1</span>,] <span class="ot">&lt;-</span> <span class="dv">0</span> <span class="co"># initial number of recovered</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>For this model, <code>beta</code> and <code>rho_beta</code> will be the exposure parameters, <code>gamma</code> and <code>rho_gamma</code> will be the parameters governing movement from infected to the first recovered compartment, and <code>delta</code> and <code>rho_delta</code> will be the parameters governing movement from the last recovered compartment to the susceptible compartment.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Step through time periods and counties, generating random movements</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="co"># and updating counts in compartments.</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (t <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>(TT<span class="dv">-1</span>)){</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (ct <span class="cf">in</span>  <span class="dv">1</span><span class="sc">:</span>N_C) {</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    (SE[t,ct]<span class="ot">=</span><span class="fu">rbetabinom</span>(<span class="dv">1</span>,S[t,ct],</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>                        <span class="dv">1</span><span class="sc">-</span><span class="fu">exp</span>(<span class="sc">-</span> <span class="fu">sum</span>(beta<span class="sc">*</span>I[t,]<span class="sc">/</span>pop_size)),</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>                        <span class="at">rho=</span>rho_beta))</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>    (EI[t,ct]<span class="ot">=</span><span class="fu">rbetabinom</span>(<span class="dv">1</span>,E[t,ct],eta,rho_eta))</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>    (IR[t,ct]<span class="ot">=</span><span class="fu">rbetabinom</span>(<span class="dv">1</span>,I[t,ct],gamma,<span class="at">rho=</span>rho_gamma))</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Movements from one recovered compartment to the next, not including the last,</span></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>    <span class="co"># since people go from the last recovered compartment to the susceptible compartment.</span></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> (cmp <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>(NRC<span class="dv">-1</span>)) {</span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>      (RR_array[cmp,t,ct] <span class="ot">&lt;-</span> <span class="fu">rbetabinom</span>(<span class="dv">1</span>,R_array[cmp,t,ct],</span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>                                       theta,rho_theta))</span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Movement from the last recovered compartment to susceptible</span></span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>    (RS[t,ct]<span class="ot">=</span><span class="fu">rbetabinom</span>(<span class="dv">1</span>,R_array[NRC,t,ct],delta,<span class="at">rho=</span>rho_delta))</span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Counts at the next time step are the previous time's counts +/- movement.</span></span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>    R_array[<span class="dv">1</span>,t<span class="sc">+</span><span class="dv">1</span>,ct] <span class="ot">&lt;-</span> R_array[<span class="dv">1</span>,t,ct]<span class="sc">+</span>IR[t,ct]<span class="sc">-</span>RR_array[<span class="dv">1</span>,t,ct]</span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> (cmp <span class="cf">in</span> <span class="dv">2</span><span class="sc">:</span>(NRC<span class="dv">-1</span>)) {</span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>      (R_array[cmp,t<span class="sc">+</span><span class="dv">1</span>,ct] <span class="ot">&lt;-</span> R_array[cmp,t,ct] <span class="sc">+</span> RR_array[cmp<span class="dv">-1</span>,t,ct] </span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a>                                               <span class="sc">-</span> RR_array[cmp,t,ct])</span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a>    (R_array[NRC,t<span class="sc">+</span><span class="dv">1</span>,ct] <span class="ot">&lt;-</span> R_array[NRC,t,ct] <span class="sc">+</span> RR_array[NRC<span class="dv">-1</span>,t,ct] <span class="sc">-</span> RS[t,ct])</span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a>    (S[t<span class="sc">+</span><span class="dv">1</span>,ct]<span class="ot">=</span>S[t,ct]<span class="sc">-</span>SE[t,ct]<span class="sc">+</span>RS[t,ct])</span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a>    (E[t<span class="sc">+</span><span class="dv">1</span>,ct]<span class="ot">=</span>E[t,ct]<span class="sc">+</span>SE[t,ct]<span class="sc">-</span>EI[t,ct])</span>
+<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a>    (I[t<span class="sc">+</span><span class="dv">1</span>,ct]<span class="ot">=</span>I[t,ct]<span class="sc">+</span>EI[t,ct]<span class="sc">-</span>IR[t,ct])</span>
+<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb7-32"><a href="#cb7-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-33"><a href="#cb7-33" aria-hidden="true" tabindex="-1"></a><span class="co"># observed new cases</span></span>
+<span id="cb7-34"><a href="#cb7-34" aria-hidden="true" tabindex="-1"></a>ii<span class="ot">=</span><span class="fu">matrix</span>(<span class="fu">rbinom</span>(N_C<span class="sc">*</span>(TT<span class="dv">-1</span>),EI,p_detect),<span class="at">nrow=</span>TT<span class="dv">-1</span>)</span>
+<span id="cb7-35"><a href="#cb7-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-36"><a href="#cb7-36" aria-hidden="true" tabindex="-1"></a><span class="fu">matplot</span>(ii, <span class="at">type=</span><span class="st">"l"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="Simulate_Process_files/figure-html/unnamed-chunk-5-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Plot the counts in the compartments over time.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">data.frame</span>(<span class="at">t=</span><span class="dv">1</span><span class="sc">:</span>TT,<span class="at">I=</span>I[,<span class="dv">1</span>],<span class="at">S=</span>S[,<span class="dv">1</span>],<span class="at">R1=</span>R_array[<span class="dv">1</span>,,<span class="dv">1</span>],<span class="at">R2=</span>R_array[<span class="dv">2</span>,,<span class="dv">1</span>],<span class="at">R3=</span>R_array[<span class="dv">3</span>,,<span class="dv">1</span>]) <span class="sc">%&gt;%</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="at">cols=</span><span class="fu">c</span>(I,S,R1,R2,R3),</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>               <span class="at">names_to=</span><span class="st">"compartment"</span>,</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>               <span class="at">values_to=</span><span class="st">"count"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x=</span>t, <span class="at">y=</span>count, <span class="at">color=</span>compartment)) <span class="sc">+</span> <span class="fu">geom_line</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="Simulate_Process_files/figure-html/unnamed-chunk-6-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
