@@ -5,7 +5,7 @@ library(posterior)
 library(MASS)
 library(VGAM)
 
-set.seed(31)
+set.seed(32)
 #set.seed(123)
 #beta <- 1.05
 #TT <- 100
