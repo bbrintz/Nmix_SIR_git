@@ -61,7 +61,7 @@ dplyr::select(-Population_2020,-Latitude,-Longitude,-cases) %>% pivot_wider(name
 dplyr::select(-date)
 #d1[3,12]=0
 
-tt <- cmdstan_model("stoch_beta_spatial_SI_utah_betabin.stan")
+tt <- cmdstan_model("SEIR_betabin.stan")#"stoch_beta_spatial_SI_utah_betabin.stan")
 
 d1[6,9]=1
 #d1=d1 %>% dplyr::select(`Salt Lake`,Utah,Davis,`Weber-Morgan`)
@@ -69,7 +69,7 @@ d1[6,9]=1
     TT = nrow(d1)+1
 
 #1,2,3,8 for 4 counties # dist/10
-#counties=c(1,2,3,4,5,6,7,8,10,11,12) # dist/10
+counties=c(1,2,3,4,5,6,7,8,10,11,12) # dist/10
 counties=c(1,2,3,8)
 N_C = length(counties)#ncol(d1)
 dat <- 
@@ -84,23 +84,24 @@ dat <-
 ? cmdstanr::cmdstan_model
 
 set.seed(123)
-fit <- tt$sample(data = dat, chains = 10,
+fit <- tt$sample(data = dat, chains = 4,
                  adapt_delta = 0.99,
                  max_treedepth = 15,
                  init = \() {list(u_t_logit_eta = matrix(qlogis(rbeta(TT*N_C, 1, 9)), TT, N_C),
+                                  v_t_logit_eta = matrix(qlogis(rbeta(TT*N_C, 1, 9)), TT, N_C),
                                   w_t_logit_eta = matrix(qlogis(rbeta(TT*N_C, 1, 9)), TT, N_C),
                                   p = rbeta(1, 4, 4),
-                                  log_beta_diag = rnorm(N_C,-.1,.001),
-                                  #b_od = rgamma(N_C-2, 4, 4),
-                                  #b_self = rgamma(N_C, 4, 4),
+                                  log_beta_diag = rnorm(N_C,0,.001),
                                   i0 = rbeta(N_C, 0.01*50, 0.99*50),
-                                  rho_si = runif(1, 0.0001, 0.005),
-                                  #decay_rate_space = rgamma(1, 2, 2),
+                                  e0 = rbeta(N_C, 0.01*50, 0.99*50),
+                                  rho_se = runif(1, 0.0001, 0.005),
+                                  rho_ei = runif(1, 0.5, 1),
+                                  rho_ir = runif(1, 0.5, 1),
                                   gamma = rbeta(N_C, 0.7 * 6, 0.3 * 6))},
                  iter_warmup = 1500,
-                 iter_sampling = 1500, parallel_chains = 10,
-                 step_size = 1.5e-3,
-                 output_dir = "./output_4")
+                 iter_sampling = 1500, parallel_chains = 4,
+                 step_size = 1.5e-3)
+                 #output_dir = "./output_4")
 saveRDS(fit,"./output_4/fit_10chn.rds")
 
 fit=readRDS("./output_11/fit_10chn.rds")
