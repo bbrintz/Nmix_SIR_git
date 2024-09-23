@@ -9,7 +9,11 @@ set.seed(32)
 #set.seed(123)
 #beta <- 1.05
 #TT <- 100
-N_C <- 10
+
+counties=c(1,2,3,4,5,6,7,8,10,11,12) # dist/10
+
+
+N_C <- 11
 
 #  p=plogis(peta0 + peta1 * tests/1000)
 #  plogis(0)
@@ -25,20 +29,19 @@ N_C <- 10
 # Spatial parameters
 # Parameters
 
-
-sigma <- .27#.05 # Standard deviation of noise
-rho <- 1#1.2  # Spatial range parameter
-decay_rate_space <- 1.1#2 # Spatial decay rate
-rho_se = .0003
-rho_ir = .035
-rho_ei = .03
+sigma <- 1.05#.05 # Standard deviation of noise
+rho <- 1.27#1.2  # Spatial range parameter
+decay_rate_space <- .315#2 # Spatial decay rate
+rho_se = .00149
+rho_ir = .866
+rho_ei = .76
 
 
 DiffsMat=expand.grid(1:N_C, 1:N_C) #%>% mutate(dist=abs(Var1-Var2))
 DiffsMat %>% mutate(dist=abs(Var1-Var2)) -> D
 
 pop=read_csv("./data/utah_counties_pop_coord.csv") %>% arrange(desc(Population_2020))
-
+pop=pop[counties,]
 # get the distance between each county (Admin2) in dat_final
 dist=matrix(0,nrow=N_C,ncol=N_C)
 for(i in 1:N_C){
@@ -62,18 +65,21 @@ for (i in 1:(N_C-1)) {
 }
 beta=exp(log_beta)
 
-gamma <- runif(N_C, min = 0.65, max = 0.75)
-eta <- runif(N_C, min = 0.85, max = 0.95)
 
-TT <- 50
+gamma <- runif(N_C, min = 0.7, max = 0.82)
+eta <- runif(N_C, min = 0.7, max = 0.95)
+
+TT <- 20
 pop_size <- pop$Population_2020[1:N_C]#1e4 * sample(1:10,N_C,TRUE)
-E_0 <- round(.9*pop_size/1000)#ample(10:20,N_C,TRUE)
-I_0 <- round(.1*pop_size/1000)#ample(10:20,N_C,TRUE)
+E_0 <- round(c(4726.79457,  5941.87056,  2930.31452,   516.33002,   484.10420, 15684.29812,
+1028.69769,   336.04944,   614.21589 ,   76.07330,    50.38387))#round(.9*pop_size/1000)#ample(10:20,N_C,TRUE)
+I_0 <- round(c(6632.3402, 9638.4035, 3168.7845,  619.8996, 1376.2502,  263.1645, 1004.1161,
+2101.1389, 1019.0036,  372.1891,  230.9937))#round(.1*pop_size/1000)#ample(10:20,N_C,TRUE)
 
 S_0 <- pop_size - E_0 - I_0
 R <- S <- I <- E <- matrix(NA_real_,TT, N_C)
 ii <- SE <- IR <- EI <- matrix(NA_real_,TT-1, N_C)
-p_detect <- 0.4
+p_detect <- 0.2
 S[1,] <- S_0
 E[1,] <- E_0
 I[1,] <- I_0
@@ -95,6 +101,10 @@ for (t in 1:(TT-1)){
 
 
 ii=matrix(rbinom(N_C*(TT-1),EI,p_detect),nrow=TT-1);ii
+
+quartz()
+ii %>% as_tibble %>% mutate(date=1:(TT-1)) %>% gather(County,Cases,-date) %>% 
+ggplot(aes(y=Cases,x=date,group=County,color=County)) + geom_line() + facet_wrap(~County,scales="free_y") + theme_minimal() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 matplot(ii, type="l")
 

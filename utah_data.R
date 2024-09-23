@@ -138,7 +138,7 @@ fit$draws("beta[1,1]") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1
 fit$draws("beta[1,2]") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
 
 
-fit$draws("gamma[3]") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
+fit$draws("rho_ir") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1500,4),group=key,color=key)) + geom_line()
 fit$draws("rho") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
 fit$draws("decay_rate_space") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
 
@@ -178,7 +178,7 @@ dev.off()
 
 
 np_fit <- nuts_params(fit)
-mcmc_pairs(fit$draws(c("p","decay_rate_space","gamma","beta","rho_si")), np = np_fit, pars = c("p","beta[1,1]","decay_rate_space","beta[1,2]","rho_si"),
+mcmc_pairs(fit$draws(c("p","decay_rate_space","gamma","beta","rho_se")), np = np_fit, pars = c("p","beta[1,1]","decay_rate_space","beta[1,2]","rho_se"),
            off_diag_args = list(size = 0.75))
 
 
