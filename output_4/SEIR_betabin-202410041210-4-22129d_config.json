@@ -1,0 +1,66 @@
+
+{
+  "stan_major_version" : "2",
+  "stan_minor_version" : "35",
+  "stan_patch_version" : "0",
+  "model_name" : "SEIR_betabin_model",
+  "start_datetime" : "2024-10-04 18:10:01 UTC",
+  "method" : {
+    "value" : "sample",
+    "sample" : {
+      "num_samples" : 1500,
+      "num_warmup" : 1500,
+      "save_warmup" : false,
+      "thin" : 1,
+      "adapt" : {
+        "engaged" : true,
+        "gamma" : 0.05,
+        "delta" : 0.99,
+        "kappa" : 0.75,
+        "t0" : 10,
+        "init_buffer" : 75,
+        "term_buffer" : 50,
+        "window" : 25,
+        "save_metric" : true
+      },
+      "algorithm" : {
+        "value" : "hmc",
+        "hmc" : {
+          "engine" : {
+            "value" : "nuts",
+            "nuts" : {
+              "max_depth" : 15
+            }
+          },
+          "metric" : {
+            "value" : "diag_e"
+          },
+          "metric_file" : "",
+          "stepsize" : 0.0015,
+          "stepsize_jitter" : 0
+        }
+      },
+      "num_chains" : 1
+    }
+  },
+  "id" : 4,
+  "data" : {
+    "file" : "\/var\/folders\/1k\/9yy62ckj3811gx4gtcf3nbww0000gq\/T\/Rtmp9n6asm\/standata-8b02328816bf.json"
+  },
+  "init" : "\/var\/folders\/1k\/9yy62ckj3811gx4gtcf3nbww0000gq\/T\/Rtmp9n6asm\/init-8b0248d6f84_4.json",
+  "random" : {
+    "seed" : 415405841
+  },
+  "output" : {
+    "file" : "\/Users\/u6020766\/Library\/CloudStorage\/Box-Box\/Brintz, Ben - SDBC\/Nmix_SIR\/Nmix_SIR_git\/.\/output_4\/SEIR_betabin-202410041210-4-22129d.csv",
+    "diagnostic_file" : "",
+    "refresh" : 100,
+    "sig_figs" : -1,
+    "profile_file" : "\/Users\/u6020766\/Library\/CloudStorage\/Box-Box\/Brintz, Ben - SDBC\/Nmix_SIR\/Nmix_SIR_git\/.\/output_4\/SEIR_betabin-profile-202410041210-4-752d70.csv",
+    "save_cmdstan_config" : true
+  },
+  "num_threads" : 1,
+  "mpi_enabled" : false,
+  "stanc_version" : "stanc3 v2.35.0",
+  "stancflags" : "--name=SEIR_betabin_model"
+}

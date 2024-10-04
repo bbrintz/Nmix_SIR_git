@@ -85,14 +85,14 @@ E[1,] <- E_0
 I[1,] <- I_0
 R[1,] <- 0 
 
-
+imp_rate=50
 
 for (t in 1:(TT-1)){
     for (ct in  1:N_C) {
-    SE[t,ct]=rbetabinom(1,S[t,ct],1-exp(- sum(beta[ct,] * I[t,]/ pop_size)),rho=rho_se)
-    EI[t,ct]=rbetabinom(1,E[t,ct],eta[ct],rho=rho_ei)
+    SE[t,ct]=rbetabinom(1,S[t,ct],1-exp(- sum(beta[ct,] * I[t,]/ pop_size)),rho=rho_se) 
+    EI[t,ct]=rbetabinom(1,E[t,ct],eta[ct],rho=rho_ei) 
     IR[t,ct]=rbetabinom(1,I[t,ct],gamma[ct],rho=rho_ir)
-    E[t+1,ct]=E[t,ct]+SE[t,ct]-EI[t,ct]
+    E[t+1,ct]=E[t,ct]+SE[t,ct]-EI[t,ct] #+ rpois(1,pop_size[ct]/1000)
     I[t+1,ct]=I[t,ct]+EI[t,ct]-IR[t,ct]
     S[t+1,ct]=S[t,ct]-SE[t,ct]
     R[t+1,ct]=R[t,ct]+IR[t,ct]

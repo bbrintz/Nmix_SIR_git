@@ -84,7 +84,7 @@ dat <-
 ? cmdstanr::cmdstan_model
 
 set.seed(123)
-fit <- tt$sample(data = dat, chains = 4,
+fit <- tt$sample(data = dat, chains = 10,
                  adapt_delta = 0.99,
                  max_treedepth = 15,
                  init = \() {list(u_t_logit_eta = matrix(qlogis(rbeta(TT*N_C, 1, 9)), TT, N_C),
@@ -95,14 +95,14 @@ fit <- tt$sample(data = dat, chains = 4,
                                   i0 = rbeta(N_C, 0.01*50, 0.99*50),
                                   e0 = rbeta(N_C, 0.01*50, 0.99*50),
                                   rho_se = runif(1, 0.0001, 0.005),
-                                  rho_ei = runif(1, 0.5, 1),
-                                  rho_ir = runif(1, 0.5, 1),
+                                  rho_ei = runif(1, 0, 1),
+                                  rho_ir = runif(1, 0, 1),
                                   gamma = rbeta(N_C, 0.7 * 6, 0.3 * 6))},
                  iter_warmup = 1500,
-                 iter_sampling = 1500, parallel_chains = 4,
-                 step_size = 1.5e-3)
-                 #output_dir = "./output_4")
-saveRDS(fit,"./output_4/fit_10chn.rds")
+                 iter_sampling = 1500, parallel_chains = 10,
+                 step_size = 1.5e-3,
+                 output_dir = "./output_11")
+saveRDS(fit,"./output_11/fit_10chn.rds")
 
 fit=readRDS("./output_11/fit_10chn.rds")
 #fit=readRDS("./output_4/fit.rds")
@@ -138,7 +138,7 @@ fit$draws("beta[1,1]") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1
 fit$draws("beta[1,2]") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
 
 
-fit$draws("rho_ir") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1500,4),group=key,color=key)) + geom_line()
+fit$draws("rho_se") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1500,10),group=key,color=key)) + geom_line()
 fit$draws("rho") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
 fit$draws("decay_rate_space") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
 
