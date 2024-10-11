@@ -69,10 +69,14 @@ beta=exp(log_beta)
 gamma <- runif(N_C, min = 0.75, max = 0.81)
 eta <- runif(N_C, min = 0.72, max = 0.78)
 
-TT <- 11
+TT <- 15
+
+
+fit$summary("i0")$median * pop_size
+
 pop_size <- pop$Population_2020[1:N_C]#1e4 * sample(1:10,N_C,TRUE)
-E_0 <- round(c(11902,6600,1120,4870))#round(.9*pop_size/1000)#ample(10:20,N_C,TRUE)
-I_0 <- round(c(1530,3172,2761,4500))#round(c(6632.3402, 9638.4035, 3168.7845,  619.8996, 1376.2502,  263.1645, 1004.1161,
+E_0 <- round(c(11902,6600,1120,737))#round(.9*pop_size/1000)#ample(10:20,N_C,TRUE)
+I_0 <- round(c(1530,3172,2761,670))#round(c(6632.3402, 9638.4035, 3168.7845,  619.8996, 1376.2502,  263.1645, 1004.1161,
 #2101.1389, 1019.0036,  372.1891,  230.9937))#round(.1*pop_size/1000)#ample(10:20,N_C,TRUE)
 
 S_0 <- pop_size - E_0 - I_0
