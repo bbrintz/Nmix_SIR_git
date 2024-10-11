@@ -10,11 +10,6 @@ vax=vax %>% mutate(date=mdy(Date)) %>% arrange(date) %>% dplyr::select(date,vax=
   group_by(date) %>% summarize(vax=sum(vax))
 
 case=case %>% dplyr::select(-c(1:5,7:11)) %>% gather("date","cases",-Admin2) %>% mutate(date=mdy(date)) %>% group_by(Admin2,date) %>% summarize(cases=sum(as.numeric(cases)))
-
-#case=test %>% right_join(case,by="date") %>% left_join(vax,by="date") %>% mutate(vax=replace_na(vax,0))
-
-ggplot(case,aes(x=date,y=cases)) + geom_line() + facet_wrap(~Admin2) + theme_minimal() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
-
 case=case %>% ungroup() %>% mutate(date=(date = 7 * (as.numeric(date - min(date)) %/% 7) + min(date))) %>% 
   group_by(date,Admin2) %>% summarize(cases=sum(cases)) %>%#,tests=sum(tests_combined_total-lag(tests_combined_total),na.rm=T))#,
                                #vax=sum(vax-lag(vax),na.rm=T))
@@ -22,24 +17,11 @@ case=case %>% ungroup() %>% mutate(date=(date = 7 * (as.numeric(date - min(date)
                                #filter(date>=ymd("2020-10-06")) %>% filter(date<ymd("2021-02-02"))
 
 
-data.frame(case %>% group_by(date) %>% summarize(sum(cases>0)))
-
-
-case %>% filter(Admin2 %in% readRDS("final_counties.rds")) %>%# filter(any(cases>1000)) %>%
-ggplot(aes(x=date,y=cases)) + facet_wrap(~Admin2) + geom_line() + theme_minimal() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
-
-data.frame(case %>% group_by(Admin2) %>% filter(any(cases>100)) %>% 
-ungroup() %>% group_by(date) %>% summarize(sum(cases>0)))
-###
 case=case %>% group_by(Admin2) %>% mutate(new_cases=cases-lag(cases)) %>% arrange(Admin2,date) %>% filter(!is.na(new_cases))# %>% filter(Admin2 %in% readRDS("final_counties.rds")) %>%# filter(any(cases>1000)) %>%
 #saveRDS(unique(dat_final$Admin2),"final_counties.rds")
 
-case %>% filter(Admin2 %in% readRDS("final_counties.rds")) %>%# filter(any(cases>1000)) %>%
-ggplot(aes(x=date,y=new_cases)) + facet_wrap(~Admin2) + geom_line() + theme_minimal() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
-
 
 dat_final=case %>% filter(Admin2 %in% readRDS("final_counties.rds"))#group_by(Admin2) %>% filter(any(cases>100))
-
 pop=read_csv("./data/utah_counties_pop_coord.csv") %>% arrange(desc(Population_2020))
 
 # get the distance between each county (Admin2) in dat_final
@@ -49,11 +31,6 @@ for(i in 1:12){
     dist[i,j]=geosphere::distHaversine(as.matrix(pop %>% dplyr::select(lon=Longitude,lat=Latitude))[c(i,j),])/1000
   }
 } 
-
-dat_final  %>% 
-filter(date<ymd("2020/8/20")) %>%#, 
-#Admin2 %in% c("Salt Lake","Utah","Davis","Weber-Morgan")) %>% 
-ggplot(aes(x=date,y=new_cases)) + geom_line() + facet_wrap(~Admin2) + theme_minimal() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 d1=dat_final %>% filter(date<ymd("2020/8/19")) %>% 
 ungroup() %>% rename(County="Admin2") %>% left_join(pop,by="County") %>% arrange(desc(Population_2020),date) %>%
@@ -69,7 +46,7 @@ d1[6,9]=1
     TT = nrow(d1)+1
 
 #1,2,3,8 for 4 counties # dist/10
-counties=c(1,2,3,4,5,6,7,8,10,11,12) # dist/10
+#counties=c(1,2,3,4,5,6,7,8,10,11,12) # dist/10
 counties=c(1,2,3,8)
 N_C = length(counties)#ncol(d1)
 dat <- 
@@ -94,15 +71,15 @@ fit <- tt$sample(data = dat, chains = 10,
                                   log_beta_diag = rnorm(N_C,0,.001),
                                   i0 = rbeta(N_C, 0.01*50, 0.99*50),
                                   e0 = rbeta(N_C, 0.01*50, 0.99*50),
-                                  rho_se = runif(1, 0.0001, 0.005),
-                                  rho_ei = runif(1, 0, 1),
+                                  rho_se = runif(1, 0.0001, 0.001),
+                                  rho_ei = runif(1, 0.05, .25),
                                   rho_ir = runif(1, 0, 1),
                                   gamma = rbeta(N_C, 0.7 * 6, 0.3 * 6))},
-                 iter_warmup = 1500,
-                 iter_sampling = 1500, parallel_chains = 10,
-                 step_size = 1.5e-3,
-                 output_dir = "./output_11")
-saveRDS(fit,"./output_11/fit_10chn.rds")
+                 iter_warmup = 1000,
+                 iter_sampling = 1000, parallel_chains = 10,
+                 step_size = 1.5e-3)
+                 #output_dir = "./output_11")
+saveRDS(fit,"./output_4/fit_4chn_SEIR.rds")
 
 fit=readRDS("./output_11/fit_10chn.rds")
 #fit=readRDS("./output_4/fit.rds")
@@ -131,7 +108,7 @@ theme(legend.position="none")
 dev.off()
 
 
-fit$draws("p") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1500,10),group=key,color=key)) + geom_line()
+fit$draws("p") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,10),group=key,color=key)) + geom_line()
 fit$draws("beta[3,3]") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
 
 fit$draws("beta[1,1]") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
@@ -145,8 +122,8 @@ fit$draws("decay_rate_space") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,
 
 fit$draws("si_t") %>% as_tibble()
 
-z_t_d <- fit$draws("si_t", format = "draws_array") |> posterior::as_draws_rvars()
-z_t_d <- z_t_d$si_t
+z_t_d <- fit$draws("se_t", format = "draws_array") |> posterior::as_draws_rvars()
+z_t_d <- z_t_d$se_t
 qpt025 <- quantile(z_t_d,0.025)
 qpt975 <- quantile(z_t_d,0.975)
 idx <- 1:4
@@ -176,9 +153,16 @@ geom_line(data=obs,aes(x=date,y=upr),linetype=2,color="black") +
  theme_minimal() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 dev.off()
 
+fit$summary("p")
 
 np_fit <- nuts_params(fit)
+
+quartz()
 mcmc_pairs(fit$draws(c("p","decay_rate_space","gamma","beta","rho_se")), np = np_fit, pars = c("p","beta[1,1]","decay_rate_space","beta[1,2]","rho_se"),
+           off_diag_args = list(size = 0.75))
+
+quartz()
+mcmc_pairs(fit$draws(c("rho_ei","rho_ir","rho_se")), np = np_fit, pars = c("rho_ei","rho_ir","rho_se"),
            off_diag_args = list(size = 0.75))
 
 

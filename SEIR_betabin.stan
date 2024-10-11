@@ -95,9 +95,9 @@ model {
   // Priors
   sigma ~ gamma(2, 2);
   rho ~ gamma(2, 2);
-  rho_ir ~ uniform(0,1); //gamma(2, 2);
-  rho_ei ~ uniform(0,1); //gamma(2, 2);
-  rho_se ~ uniform(0,.01);//gamma(2, 2);
+  rho_ir ~ beta(1,3); //gamma(2, 2);
+  rho_ei ~ beta(1,3); //gamma(2, 2);
+  rho_se ~ beta(1,3);//gamma(2, 2);
   decay_rate_space ~ gamma(2, 2);
 
   // Prior for log_beta_diag
@@ -117,7 +117,7 @@ model {
   for (ct in 1:N_C) {
     for (i in 1:(TT-1)) {
         if (se_t[i+1,ct] > 0)
-          ii[i,ct] ~ normal(p * pop_size[ct] * se_t[i+1,ct], sqrt(pop_size[ct] * p * se_t[i+1,ct] * (1 - p)));
+          ii[i,ct] ~ normal(p * pop_size[ct] * ei_t[i+1,ct], sqrt(pop_size[ct] * p * ei_t[i+1,ct] * (1 - p)));
     }
   }
 }

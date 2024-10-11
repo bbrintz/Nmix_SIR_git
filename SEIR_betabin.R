@@ -10,10 +10,10 @@ set.seed(32)
 #beta <- 1.05
 #TT <- 100
 
-counties=c(1,2,3,4,5,6,7,8,10,11,12) # dist/10
+counties=c(1,2,3,8)#c(1,2,3,4,5,6,7,8,10,11,12) # dist/10
 
 
-N_C <- 11
+N_C <- 4
 
 #  p=plogis(peta0 + peta1 * tests/1000)
 #  plogis(0)
@@ -29,12 +29,12 @@ N_C <- 11
 # Spatial parameters
 # Parameters
 
-sigma <- 1.05#.05 # Standard deviation of noise
-rho <- 1.27#1.2  # Spatial range parameter
-decay_rate_space <- .315#2 # Spatial decay rate
-rho_se = .00149
-rho_ir = .866
-rho_ei = .76
+sigma <- 2#.05 # Standard deviation of noise
+rho <- .9#1.2  # Spatial range parameter
+decay_rate_space <- .15#2 # Spatial decay rate
+rho_se = .00097
+rho_ir = .657
+rho_ei = .0015
 
 
 DiffsMat=expand.grid(1:N_C, 1:N_C) #%>% mutate(dist=abs(Var1-Var2))
@@ -66,26 +66,25 @@ for (i in 1:(N_C-1)) {
 beta=exp(log_beta)
 
 
-gamma <- runif(N_C, min = 0.7, max = 0.82)
-eta <- runif(N_C, min = 0.7, max = 0.95)
+gamma <- runif(N_C, min = 0.75, max = 0.81)
+eta <- runif(N_C, min = 0.72, max = 0.78)
 
-TT <- 20
+TT <- 11
 pop_size <- pop$Population_2020[1:N_C]#1e4 * sample(1:10,N_C,TRUE)
-E_0 <- round(c(4726.79457,  5941.87056,  2930.31452,   516.33002,   484.10420, 15684.29812,
-1028.69769,   336.04944,   614.21589 ,   76.07330,    50.38387))#round(.9*pop_size/1000)#ample(10:20,N_C,TRUE)
-I_0 <- round(c(6632.3402, 9638.4035, 3168.7845,  619.8996, 1376.2502,  263.1645, 1004.1161,
-2101.1389, 1019.0036,  372.1891,  230.9937))#round(.1*pop_size/1000)#ample(10:20,N_C,TRUE)
+E_0 <- round(c(11902,6600,1120,4870))#round(.9*pop_size/1000)#ample(10:20,N_C,TRUE)
+I_0 <- round(c(1530,3172,2761,4500))#round(c(6632.3402, 9638.4035, 3168.7845,  619.8996, 1376.2502,  263.1645, 1004.1161,
+#2101.1389, 1019.0036,  372.1891,  230.9937))#round(.1*pop_size/1000)#ample(10:20,N_C,TRUE)
 
 S_0 <- pop_size - E_0 - I_0
 R <- S <- I <- E <- matrix(NA_real_,TT, N_C)
 ii <- SE <- IR <- EI <- matrix(NA_real_,TT-1, N_C)
-p_detect <- 0.2
+p_detect <- 0.4
 S[1,] <- S_0
 E[1,] <- E_0
 I[1,] <- I_0
 R[1,] <- 0 
 
-imp_rate=50
+#imp_rate=50
 
 for (t in 1:(TT-1)){
     for (ct in  1:N_C) {
@@ -106,7 +105,6 @@ quartz()
 ii %>% as_tibble %>% mutate(date=1:(TT-1)) %>% gather(County,Cases,-date) %>% 
 ggplot(aes(y=Cases,x=date,group=County,color=County)) + geom_line() + facet_wrap(~County,scales="free_y") + theme_minimal() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
-matplot(ii, type="l")
 
 tt <- cmdstan_model("SEIR_betabin.stan")
 
@@ -121,9 +119,9 @@ dat <-
 
 
 seed(123)
-fit <- tt$sample(data = dat, chains = 4,
-                 adapt_delta = 0.95,
-                 max_treedepth = 14,
+fit2 <- tt$sample(data = dat, chains = 4,
+                 adapt_delta = 0.99,
+                 max_treedepth = 15,
                  init = \() {list(u_t_logit_eta = matrix(qlogis(rbeta(TT*N_C, 1, 9)), TT, N_C),
                                   v_t_logit_eta = matrix(qlogis(rbeta(TT*N_C, 1, 9)), TT, N_C),
                                   w_t_logit_eta = matrix(qlogis(rbeta(TT*N_C, 1, 9)), TT, N_C),
@@ -131,14 +129,24 @@ fit <- tt$sample(data = dat, chains = 4,
                                   log_beta_diag = rnorm(N_C,0,.001),
                                   i0 = rbeta(N_C, 0.01*50, 0.99*50),
                                   e0 = rbeta(N_C, 0.01*50, 0.99*50),
-                                  rho_se = runif(1, 0.0001, 0.005),
-                                  rho_ei = runif(1, 0.5, 1),
-                                  rho_ir = runif(1, 0.5, 1),
+                                  rho_se = runif(1, 0.0001, 0.001),
+                                  rho_ei = runif(1, 0.05, .25),
+                                  rho_ir = runif(1, 0, 1),
                                   gamma = rbeta(N_C, 0.7 * 6, 0.3 * 6))},
                  iter_warmup = 1000,
                  iter_sampling = 1000, parallel_chains = 4,
                  step_size = 1.5e-3)
 
+
+np_fit <- nuts_params(fit)
+
+quartz()
+mcmc_pairs(fit$draws(c("p","decay_rate_space","gamma","beta","rho_se")), np = np_fit, pars = c("p","beta[1,1]","decay_rate_space","beta[1,2]","rho_se"),
+           off_diag_args = list(size = 0.75))
+
+quartz()
+mcmc_pairs(fit$draws(c("rho_ei","rho_ir","rho_se")), np = np_fit, pars = c("rho_ei","rho_ir","rho_se"),
+           off_diag_args = list(size = 0.75))
 
 lims <- hist(fit$draws("p"),plot=FALSE)
 ymax <- lims$density |> max()
@@ -302,25 +310,21 @@ mcmc_pairs(fit$draws(c("p","decay_rate_space","gamma","beta","rho_si")), np = np
 
 
 
-z_t_d <- fit$draws("si_t", format = "draws_array") |> posterior::as_draws_rvars()
-z_t_d <- z_t_d$si_t
+z_t_d <- fit$draws("ei_t", format = "draws_array") |> posterior::as_draws_rvars()
+z_t_d <- z_t_d$ei_t
 qpt025 <- quantile(z_t_d,0.025)
 qpt975 <- quantile(z_t_d,0.975)
-
 pop4=pop_size
-
-
 obs=rbind(data.frame(value="mean",sweep(mean(z_t_d)[-1,],MARGIN = 2, STATS = pop4, FUN = "*")),
 data.frame(value="lwr",sweep(qpt025[1,-1,],MARGIN = 2, STATS = pop4, FUN = "*")),
 data.frame(value="upr",sweep(qpt975[1,-1,],MARGIN = 2, STATS = pop4, FUN = "*")))
 
 obs=obs %>% gather(County,Cases,-value) %>% pivot_wider(names_from=value,values_from=Cases) %>% unnest() %>% mutate(date=rep(1:(TT-1),N_C))
 
-
-
-truth=SI %>% as_tibble() %>% mutate(date=1:(TT-1)) %>% gather(County,Cases,-date) %>% 
+truth=EI %>% as_tibble() %>% mutate(date=1:(TT-1)) %>% gather(County,Cases,-date) %>% 
 mutate(County= gsub("V", "X", County))
 
+quartz()
 dat$ii %>% as_tibble() %>% mutate(date=1:(TT-1)) %>% gather(County,Cases,-date) %>% 
 mutate(County= gsub("V", "X", County)) %>%
 ggplot(aes(x=date,y=Cases,color=County)) + geom_point() + facet_wrap(~County) + 
