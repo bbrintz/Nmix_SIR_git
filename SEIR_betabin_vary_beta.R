@@ -14,7 +14,7 @@ counties=c(1,2,3,8)#c(1,2,3,4,5,6,7,8,10,11,12) # dist/10
 
 
 N_C <- 4
-TT <- 15
+TT <- 20
 #  p=plogis(peta0 + peta1 * tests/1000)
 #  plogis(0)
 

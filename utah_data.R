@@ -73,8 +73,8 @@ fit <- tt$sample(data = dat, chains = 4,
                                   #log_beta_diag = lapply(1:(((TT-1) %/% dat$b_freq)+1), function(t) rnorm(N_C, 0, 0.001)),
                                   i0 = rbeta(N_C, 0.01*50, 0.99*50),
                                   e0 = rbeta(N_C, 0.01*50, 0.99*50),
-                                  rho_se = runif(1, 0.0001, 0.001),
-                                  rho_ei = runif(1, 0.05, .25),
+                                  rho_se = runif(1, 0, 1),
+                                  rho_ei = runif(1, 0, 1),
                                   rho_ir = runif(1, 0, 1),
                                   gamma = rbeta(N_C, 0.7 * 6, 0.3 * 6))},
                  iter_warmup = 1000,
@@ -89,7 +89,13 @@ fit=readRDS("./output_11/fit_10chn.rds")
 fit$summary("sigma") 
 fit$summary("p")
 fit$diagnostic_summary()
+fit$sampler_diagnostics()
 
+#diags <- fit$sampler_diagnostics()
+#diags[1,,"stepsize__"]
+
+tt <- fit$inv_metric(matrix = FALSE)
+summary(tt$`3`)
 
 lims <- hist(fit$draws("p"),plot=FALSE)
 ymax <- lims$density |> max()
@@ -110,14 +116,14 @@ theme(legend.position="none")
 dev.off()
 
 
-fit$draws("p") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,10),group=key,color=key)) + geom_line()
-fit$draws("beta[3,3]") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
+fit$draws("p") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
+fit$draws("beta[3]") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
 
 fit$draws("beta[1,1]") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
 fit$draws("beta[1,2]") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
 
 
-fit$draws("rho_se") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1500,10),group=key,color=key)) + geom_line()
+fit$draws("rho_se") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
 fit$draws("rho") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
 fit$draws("decay_rate_space") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
 
