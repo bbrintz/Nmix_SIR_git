@@ -15,8 +15,6 @@ parameters {
   real<lower=0, upper=1> p;
   vector<lower=0, upper=1>[N_C] gamma;
   vector<lower=0, upper=1>[N_C] eta;
-
-  real<lower=0,upper=1> rho_se; // Spatial range parameter
   real<lower=0,upper=1> rho_ir; // Spatial range parameter
   real<lower=0,upper=1> rho_ei; // Spatial range parameter
   real<lower=0> decay_rate_space; // Spatial decay rate
@@ -37,7 +35,9 @@ transformed parameters {
   matrix[TT, N_C] w_t;
   vector[TT] log_beta;
   vector<lower=0>[TT] beta;
+  real<lower=0,upper=0> rho_se;
 
+  rho_se = 0;
   i_t[1,] = i0;
   e_t[1,] = e0;
   s_t[1] = 1 - i0 - e0;
@@ -69,15 +69,16 @@ model {
 
   rho_ir ~ beta(1,3); //gamma(2, 2);
   rho_ei ~ beta(1,3); //gamma(2, 2);
-  rho_se ~ beta(1,3);//gamma(2, 2);
+  //rho_se ~ beta(1,3);//gamma(2, 2);
   phi ~ uniform(-1,1);
   sigma ~ gamma(2, 2);
-  Z ~ normal(0, sigma);
+  Z[2:TT] ~ normal(0, sigma);
+  Z[1] ~ normal(0, sigma / sqrt(1 - phi^2)); 
 
  i0 ~ beta_proportion(0.01, 50);
  e0 ~ beta_proportion(0.01, 50);
 
- p ~ beta_proportion(0.75, 5);
+ p ~ beta_proportion(0.25, 5);
  gamma ~ beta_proportion(0.8, 15);
  eta ~ beta_proportion(0.8, 15);
 
@@ -86,7 +87,7 @@ model {
  to_vector(w_t_logit_eta) ~ std_normal();
 
  for (i in 1:(TT-1)) {
-  for (ct in 1:N_C`) {
+  for (ct in 1:N_C) {
         if (ei_t[i+1,ct] > 0)
           ii[i,ct] ~ normal(p * pop_size[ct] * ei_t[i+1,ct], sqrt(pop_size[ct] * p * ei_t[i+1,ct] * (1 - p)));
     }

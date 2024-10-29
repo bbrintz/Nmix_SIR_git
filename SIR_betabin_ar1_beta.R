@@ -8,33 +8,35 @@ library(VGAM)
 set.seed(32)
 #set.seed(123)
 #beta <- 1.05
-N_C <- 15
-TT <- 30
+N_C <- 11
+TT <- 18
 
 rho_si = 0
-rho_ir = .657
+rho_ir = .852
 
-phi1=.75
+phi1=.916
 
-pop=1e4*sample(5:N_C)#pop[counties,]
+counties=c(1,2,3,4,5,6,7,8,10,11,12) # dist/10
+pop=read_csv("./data/utah_counties_pop_coord.csv") %>% arrange(desc(Population_2020))
+pop=pop$Population_2020[counties]#1e4*sample(5:N_C)#pop[counties,]
 
-sigma=0.025
+sigma=.15
 log_beta <- numeric(TT-1)
-log_beta[1] <- rnorm(1,0,sigma)
+log_beta[1] <- rnorm(1,0,sigma/sqrt(1-phi1^2));log_beta[1]
 
 for (t in 2:(TT-1)) {
   log_beta[t] <- phi1 * log_beta[t - 1] + rnorm(1,0,sigma)
 }
 exp(log_beta) %>% plot
-beta=exp(log_beta)
+beta=exp(log_beta);beta
 
-gamma <- runif(N_C, min = 0.76, max = 0.82)
-pop_size <- 1e4 * sample(1:10,N_C,TRUE)
-I_0 <- round(pop_size/500)#ample(10:20,N_C,TRUE)
+gamma <- c(.65,.63,.7,.7,.73,.96,.8,.64,.76,.65,.89)#runif(N_C, min = 0.63, max = 0.96)
+pop_size <- pop#1e4 * sample(1:10,N_C,TRUE)
+I_0 <- c(133000,73650,8000,6000,12500,3500,3200,8700,7000,3200,1900)#round(pop_size/500)#ample(10:20,N_C,TRUE)
 S_0 <- pop_size - I_0
 R <- S <- I <- matrix(NA_real_,TT, N_C)
 ii <- SI <- IR <- matrix(NA_real_,TT-1, N_C)
-p_detect <- 0.4
+p_detect <- 0.77
 S[1,] <- S_0
 I[1,] <- I_0
 R[1,] <- 0 
@@ -67,7 +69,7 @@ dat <-
 saveRDS(dat, "dat.rds")
 
 seed(123)
-fit2 <- tt$sample(data = dat, chains = 4,
+fit <- tt$sample(data = dat, chains = 4,
                  adapt_delta = 0.95,
                  max_treedepth = 14,
                  init = \() {list(u_t_logit_eta = matrix(qlogis(rbeta(TT*N_C, 1, 9)), TT, N_C),
@@ -80,8 +82,8 @@ fit2 <- tt$sample(data = dat, chains = 4,
                                   #rho_si = runif(1, 0.0001, 0.005),
                                   gamma = rbeta(N_C, 0.7 * 6, 0.3 * 6))},
                  iter_warmup = 1000,
-                 iter_sampling = 1000, parallel_chains = 4,
-                 step_size = .005)
+                 iter_sampling = 1000, parallel_chains = 4)#,
+                 #step_size = .005)
 
 fit$init()
 fit$sampler_diagnostics()

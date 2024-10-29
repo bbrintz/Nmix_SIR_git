@@ -38,7 +38,7 @@ dplyr::select(-Population_2020,-Latitude,-Longitude,-cases) %>% pivot_wider(name
 dplyr::select(-date)
 #d1[3,12]=0
 
-tt <- cmdstan_model("SEIR_betabin_vary_beta_nospat.stan")#"stoch_beta_spatial_SI_utah_betabin.stan")
+tt <- cmdstan_model("SEIR_betabin_ar1_beta.stan")#cmdstan_model("SEIR_betabin_vary_beta_nospat.stan")#"stoch_beta_spatial_SI_utah_betabin.stan")
 
 d1[6,9]=1
 #d1=d1 %>% dplyr::select(`Salt Lake`,Utah,Davis,`Weber-Morgan`)
@@ -46,8 +46,8 @@ d1[6,9]=1
     TT = nrow(d1)+1
 
 #1,2,3,8 for 4 counties # dist/10
-#counties=c(1,2,3,4,5,6,7,8,10,11,12) # dist/10
-counties=c(1,2,3,8)
+counties=c(1,2,3,4,5,6,7,8,10,11,12) # dist/10
+#counties=c(1,2,3,8)
 N_C = length(counties)#ncol(d1)
 dat <- 
   list(
@@ -63,24 +63,22 @@ dat <-
 
 set.seed(123)
 fit <- tt$sample(data = dat, chains = 4,
-                 adapt_delta = 0.99,
+                 adapt_delta = 0.95,
                  max_treedepth = 15,
                  init = \() {list(u_t_logit_eta = matrix(qlogis(rbeta(TT*N_C, 1, 9)), TT, N_C),
                                   v_t_logit_eta = matrix(qlogis(rbeta(TT*N_C, 1, 9)), TT, N_C),
                                   w_t_logit_eta = matrix(qlogis(rbeta(TT*N_C, 1, 9)), TT, N_C),
                                   p = rbeta(1, 4, 4),
-                                  log_beta=rnorm(dat$TT %/% dat$b_freq  + ifelse(dat$TT %% dat$b_freq > 0,1,0),0,.01),
-                                  #log_beta_diag = lapply(1:(((TT-1) %/% dat$b_freq)+1), function(t) rnorm(N_C, 0, 0.001)),
+                                  phi=runif(1,0,1),
+                                  Z=runif(TT,-.25,.25),
+                                  sigma = runif(1, 0, 1),
                                   i0 = rbeta(N_C, 0.01*50, 0.99*50),
-                                  e0 = rbeta(N_C, 0.01*50, 0.99*50),
-                                  rho_se = runif(1, 0, 1),
-                                  rho_ei = runif(1, 0, 1),
-                                  rho_ir = runif(1, 0, 1),
+                                  #rho_si = runif(1, 0.0001, 0.005),
                                   gamma = rbeta(N_C, 0.7 * 6, 0.3 * 6))},
                  iter_warmup = 1000,
-                 iter_sampling = 1000, parallel_chains = 4,
-                 step_size = 1.5e-3)
-                 #output_dir = "./output_11")
+                 iter_sampling = 1000, parallel_chains = 4)#,
+                 #step_size = .005)
+
 saveRDS(fit,"./output_4/fit_4chn_SEIR.rds")
 
 fit=readRDS("./output_11/fit_10chn.rds")
@@ -103,93 +101,96 @@ hist(rbeta(1e6,0.5 * 4, 0.5 * 4),freq=FALSE,breaks=100, border = NA,
      main = "Prior (grey) vs. posterior (red) for prob of detection",
      xlab = "p", ylim = c(0,ymax+1))
 hist(fit$draws("p"),freq=FALSE,col=rgb(1,0,0,0.5),add=TRUE,border = NA)
+abline(v = p_detect,col="black")
 
-png("four_county_p.png")
-ggplot() + 
-geom_histogram(data=data.frame(p=rbeta(1e6,0.5 * 4, 0.5 * 4)),
-aes(x=p,..density..),alpha=.25,fill="grey",linetype=2) +
-geom_histogram(data=fit$draws("p") %>% as_tibble %>% gather() %>% mutate(key=factor(key)), 
-aes(x=value,y=..density..,fill=1),alpha=0.75) + 
-scale_fill_viridis_c() +
-theme_minimal() +
-theme(legend.position="none")
-dev.off()
-
+lims <- hist(fit$draws("phi"),plot=FALSE)
+ymax <- lims$density |> max()
+hist(runif(1e6,-1, 1),freq=FALSE,breaks=100, border = NA,
+     main = "Prior (grey) vs. posterior (red) for prob of detection",
+     xlab = "p", ylim = c(0,ymax+1))
+hist(fit$draws("phi"),freq=FALSE,col=rgb(1,0,0,0.5),add=TRUE,border = NA)
 
 fit$draws("p") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
-fit$draws("beta[3]") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
+fit$summary("p")
+fit$draws("beta[2]") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
 
-fit$draws("beta[1,1]") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
-fit$draws("beta[1,2]") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
+np_fit <- nuts_params(fit)
+quartz()
+mcmc_pairs(fit$draws(c("p","gamma","beta","rho_ei","phi","sigma","eta")), np = np_fit, pars = c("p","beta[2]","beta[3]","eta[1]","phi","rho_ei"),
+           off_diag_args = list(size = 0.75))
+
+betas=fit$draws("beta", format = "draws_array") |> posterior::as_draws_rvars()
 
 
-fit$draws("rho_se") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
-fit$draws("rho") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
-fit$draws("decay_rate_space") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
+1:17 %>% purrr::map_df(function(x){
+qs=quantile(betas$beta[x],c(0.025,0.975))
+data.frame(est=mean(betas$beta[x]),low=qs[1],high=qs[2],week=x)
+}
+) %>%
+ggplot(aes(x=week,y=est)) + geom_point() + geom_line() + geom_ribbon(aes(ymin=low,ymax=high),alpha=.25) #+ geom_line(aes(y=truth),color="red")
 
 
-fit$draws("si_t") %>% as_tibble()
 
-z_t_d <- fit$draws("se_t", format = "draws_array") |> posterior::as_draws_rvars()
-z_t_d <- z_t_d$se_t
+
+
+sim_pars <- fit$sampler_diagnostics()
+colSums(sim_pars[,,"treedepth__"] == 14)
+colMeans(sim_pars[,,"treedepth__"])
+
+sim_pars[,,"treedepth__"] %>% as_tibble
+
+colMeans(sim_pars[,,"stepsize__"])
+
+meta_data <- fit$metadata()
+names(meta_data)
+meta_data$data
+meta_data$init
+
+
+z_t_d <- fit$draws("si_t", format = "draws_array") |> posterior::as_draws_rvars()
+z_t_d <- z_t_d$si_t
 qpt025 <- quantile(z_t_d,0.025)
 qpt975 <- quantile(z_t_d,0.975)
-idx <- 1:4
-ylims <- range(c(
-  range(sweep(qpt975[1,,],MARGIN = 2, STATS = dat$pop_size, FUN = "*")[,idx]),
-  range(sweep(qpt025[1,,],MARGIN = 2, STATS = dat$pop_size, FUN = "*")[,idx])
-))
-matplot(dat$ii[,idx], xlab = "Time", 
-     ylab = "Prevalence", main = "Latent prevalence v. time first 2 cties",
-     pch = 19,ylim=ylims) 
-matlines(sweep(mean(z_t_d)[-1,],MARGIN = 2, STATS = dat$pop_size, FUN = "*")[,idx],lty=1)
-matlines(sweep(qpt025[1,-1,],MARGIN = 2, STATS = dat$pop_size, FUN = "*")[,idx],lty=2)
-matlines(sweep(qpt975[1,-1,],MARGIN = 2, STATS = dat$pop_size, FUN = "*")[,idx],lty=2)
 
-obs=rbind(data.frame(value="mean",sweep(mean(z_t_d)[-1,],MARGIN = 2, STATS = dat$pop_size, FUN = "*")[,idx]),
-data.frame(value="lwr",sweep(qpt025[1,-1,],MARGIN = 2, STATS = dat$pop_size, FUN = "*")[,idx]),
-data.frame(value="upr",sweep(qpt975[1,-1,],MARGIN = 2, STATS = dat$pop_size, FUN = "*")[,idx])) %>%
-rename(`Salt Lake`=X1,Utah=X2,Davis=X3,Summit=X4) %>% gather(County,Cases,-value) %>% 
-pivot_wider(names_from=value,values_from=Cases) %>% unnest() %>% mutate(date=rep(dts,4))
+pop4=pop_size
 
-dts=unique(dat_final %>% filter(date<ymd("2020/8/19")) %>% pull(date))
-png("inf_est_4.png")
-dat$ii %>% as_tibble() %>% mutate(date=dts) %>%  gather(County,Cases,-date) %>% 
-ggplot(aes(x=date,y=Cases,color=County)) + geom_point() + facet_wrap(~County) + 
-geom_line(data=obs,aes(x=date,y=mean),color="black") + geom_line(data=obs,aes(x=date,y=lwr),linetype=2,color="black") + 
-geom_line(data=obs,aes(x=date,y=upr),linetype=2,color="black") +
- theme_minimal() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
-dev.off()
+
+obs=rbind(data.frame(value="mean",sweep(mean(z_t_d)[-1,],MARGIN = 2, STATS = pop4, FUN = "*")),
+data.frame(value="lwr",sweep(qpt025[1,-1,],MARGIN = 2, STATS = pop4, FUN = "*")),
+data.frame(value="upr",sweep(qpt975[1,-1,],MARGIN = 2, STATS = pop4, FUN = "*")))
+
+obs=obs %>% gather(County,Cases,-value) %>% pivot_wider(names_from=value,values_from=Cases) %>% unnest() %>% mutate(date=rep(1:(TT-1),N_C)) #%>%
+#filter(County %in% unique(truth$County)[1:4])#
+
+
+
+#truth=SI %>% as_tibble() %>% mutate(date=1:(TT-1)) %>% gather(County,Cases,-date) %>% 
+#mutate(County= gsub("V", "X", County)) #%>% filter(County %in% unique(truth$County)[1:4])
 
 fit$summary("p")
 
-np_fit <- nuts_params(fit)
+truth=dat$ii %>% as_tibble() %>% mutate(date=1:(TT-1)) %>% gather(County,Cases,-date) 
+truth$County
 
+unique(truth$County)
 quartz()
-mcmc_pairs(fit$draws(c("p","decay_rate_space","gamma","beta","rho_se","sigma")), np = np_fit, pars = c("beta[1,1,1]","beta[2,1,1]","beta[3,1,1]"),
-           off_diag_args = list(size = 0.75))
-
-quartz()
-mcmc_pairs(fit$draws(c("p","decay_rate_space","gamma","beta","rho_se","sigma")), np = np_fit, pars = c("p","beta[1,1,1]","beta[2,1,1]","beta[3,1,1]","sigma"),
-           off_diag_args = list(size = 0.75))
-
-quartz()
-mcmc_pairs(fit$draws(c("rho_ei","rho_ir","rho_se")), np = np_fit, pars = c("rho_ei","rho_ir","rho_se"),
-           off_diag_args = list(size = 0.75))
+obs %>% mutate(County=rep(unique(truth$County),each=17)) %>% left_join(truth,by=c("County","date")) %>% 
+ggplot(aes(x=date,y=mean,color=County)) + geom_point() + 
+geom_line(aes(y=lwr),linetype="dashed") + geom_line(aes(y=upr),linetype="dashed") + 
+#geom_point(aes(y=Cases),color="red") +
+facet_wrap(~County) 
 
 
-hist(rgamma(1e6,5, 1),freq=FALSE,breaks=100, border = NA,
-     main = "Prior (grey) vs. posterior (red) for prob of detection",
-     xlab = "p", ylim = c(0,.1))
+dat$ii %>% as_tibble() %>% mutate(date=1:(TT-1)) %>% gather(County,Cases,-date) %>% 
+mutate(County= gsub("V", "X", County)) %>% #filter(County %in% unique(truth$County)[1:4]) %>%
+ggplot(aes(x=date,y=Cases,color=County)) + geom_point() + facet_wrap(~County) + 
+geom_line(data=obs,aes(x=date,y=mean),color="black") + geom_line(data=obs,aes(x=date,y=lwr),linetype=2,color="black") + 
+geom_line(data=obs,aes(x=date,y=upr),linetype=2,color="black") +
+geom_point(data=truth,aes(x=date,y=Cases),color="#5757b8",alpha=.25) +
+ theme_minimal() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
+fit$summary() %>% as_tibble() %>% filter(!grepl("u_t",variable),!grepl("w_t",variable),!grepl("i0",variable),!grepl("gamma",variable),
+!grepl("Z",variable),,!grepl("s_t",variable),!grepl("si_t",variable),!grepl("ir_t",variable),!grepl("i_t",variable))
 
-mu=.5
-kappa=4
-
-alp=mu*kappa
-bet=(1-mu)*kappa
-
-hist(rbeta(1e6,alp,bet),freq=FALSE,breaks=100, border = NA,
-     main = "Prior (grey) vs. posterior (red) for prob of detection",
-     xlab = "p", ylim = c(0,ymax+1))
+fit$summary() %>% as_tibble() %>% filter(grepl("Z",variable))
 

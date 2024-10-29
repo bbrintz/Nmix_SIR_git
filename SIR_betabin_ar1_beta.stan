@@ -59,9 +59,9 @@ model {
   //rho_si ~ beta(1,3);//gamma(2, 2);
   phi ~ uniform(-1,1);
   sigma ~ gamma(2,.5);
-  Z ~ normal(0, sigma);
-
- i0 ~ beta_proportion(0.01, 50);
+  Z[2:TT] ~ normal(0, sigma);
+  Z[1] ~ normal(0, sigma / sqrt(1 - phi^2)); 
+  i0 ~ beta_proportion(0.01, 50);
 
  p ~ beta_proportion(0.75, 5);
  gamma ~ beta_proportion(0.8, 15);
