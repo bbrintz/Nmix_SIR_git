@@ -170,3 +170,14 @@ geom_point(data=truth,aes(x=date,y=Cases),color="#5757b8",alpha=.25) +
 
 
 
+# Given mean (mu) and precision (phi)
+mu <- 0.25    # Example mean
+phi <- 5      # Example precision
+
+# Convert to alpha and beta
+alpha <- mu * phi
+beta <- (1 - mu) * phi
+simulated_data <- rbeta(n = 1000, shape1 = alpha, shape2 = beta)
+
+# Visualize the simulated data
+hist(simulated_data, breaks = 30, main = "Simulated Beta Distribution", xlab = "Value")

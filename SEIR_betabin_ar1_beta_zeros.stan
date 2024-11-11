@@ -3,6 +3,7 @@ data {
   int<lower=0> TT;
   vector<lower=0>[N_C] pop_size;
   array[TT-1,N_C] real<lower=0> ii;
+  array[TT-1,N_C] real<lower=0> zeros;
 }
 
 parameters {
@@ -10,7 +11,7 @@ parameters {
   matrix[TT, N_C] u_t_logit_eta;
   matrix[TT, N_C] w_t_logit_eta;
   matrix[TT, N_C] v_t_logit_eta;
-  //row_vector<lower=0, upper=1>[N_C] i0;
+  row_vector<lower=0, upper=1>[N_C] i0;
   row_vector<lower=0, upper=1>[N_C] e0;
   real<lower=0, upper=1> p;
   vector<lower=0, upper=1>[N_C] gamma;
@@ -39,7 +40,6 @@ transformed parameters {
   real<lower=0,upper=0> rho_ir;
   real u_t_mean;
 
-  row_vector<lower=0, upper=1>[N_C] i0 = rep_row_vector(100,N_C);
   rho_se = 0;
   rho_ei = 0;
   rho_ir = 0;
@@ -81,7 +81,7 @@ model {
   Z[2:TT] ~ normal(0, sigma);
   Z[1] ~ normal(0, sigma / sqrt(1 - phi^2)); 
 
- //i0 ~ beta_proportion(0.01, 50);
+ i0 ~ beta_proportion(0.01, 50);
  e0 ~ beta_proportion(0.01, 50);
 
  p ~ beta_proportion(0.25, 5);

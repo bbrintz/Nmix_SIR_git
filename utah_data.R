@@ -2,6 +2,11 @@ library(tidyverse)
 library(cmdstanr)
 library(bayesplot)
 library(posterior)
+library(here)
+
+setwd()
+
+#set working directory to current file path
 case = read_csv("./data/time_series_covid19_confirmed_US.csv") %>% filter(`Province_State`=="Utah")
 test = read_csv("./data/time_series_covid19_US_testing_by_state.csv") %>% filter(state=="UT")
 vax = read_csv("./data/COVID-19_Vaccinations_in_the_United_States_County.csv") %>% filter(Recip_State=="UT")
@@ -13,7 +18,8 @@ case=case %>% dplyr::select(-c(1:5,7:11)) %>% gather("date","cases",-Admin2) %>%
 case=case %>% ungroup() %>% mutate(date=(date = 7 * (as.numeric(date - min(date)) %/% 7) + min(date))) %>% 
   group_by(date,Admin2) %>% summarize(cases=sum(cases)) %>%#,tests=sum(tests_combined_total-lag(tests_combined_total),na.rm=T))#,
                                #vax=sum(vax-lag(vax),na.rm=T))
-                               filter(date>=ymd("2020-04-15")) %>% filter(date<ymd("2021-06-02"))
+                               #filter(date>=ymd("2020-04-15")) %>% 
+                               filter(date<ymd("2021-06-02"))
                                #filter(date>=ymd("2020-10-06")) %>% filter(date<ymd("2021-02-02"))
 
 
@@ -49,6 +55,8 @@ d1[6,9]=1
 counties=c(1,2,3,4,5,6,7,8,10,11,12) # dist/10
 #counties=c(1,2,3,8)
 N_C = length(counties)#ncol(d1)
+
+zeros=matrix(as.numeric(as.matrix(d1)[,counties]!=0),ncol=N_C)
 dat <- 
   list(
     ii = as.matrix(d1)[,counties],
@@ -56,13 +64,13 @@ dat <-
     N_C = N_C,
     pop_size = pop$Population_2020[counties],
     D=dist[counties,counties]/10,
-    b_freq=2
+    zeros=zeros
   )
 
 ? cmdstanr::cmdstan_model
 
 set.seed(123)
-fit <- tt$sample(data = dat, chains = 4,
+fit <- tt$sample(data = dat, chains = 1,
                  adapt_delta = 0.95,
                  max_treedepth = 15,
                  init = \() {list(u_t_logit_eta = matrix(qlogis(rbeta(TT*N_C, 1, 9)), TT, N_C),
@@ -72,17 +80,28 @@ fit <- tt$sample(data = dat, chains = 4,
                                   phi=runif(1,0,1),
                                   Z=runif(TT,-.25,.25),
                                   sigma = runif(1, 0, 1),
-                                  i0 = rbeta(N_C, 0.01*50, 0.99*50),
+                                  i0 = 0,#rbeta(N_C, 0.01*50, 0.99*50),
+                                  e0 = rbeta(N_C, 0.01*50, 0.99*50),
                                   #rho_si = runif(1, 0.0001, 0.005),
+                                  #rho_ei = runif(1, 0.001, 0.01),
+                                  #rho_ir = runif(1, 0.001, 0.01),
                                   gamma = rbeta(N_C, 0.7 * 6, 0.3 * 6))},
-                 iter_warmup = 1000,
-                 iter_sampling = 1000, parallel_chains = 4)#,
+                 iter_warmup = 1,
+                 iter_sampling = 1, parallel_chains = 4)#,
                  #step_size = .005)
+
+
 
 saveRDS(fit,"./output_4/fit_4chn_SEIR.rds")
 
 fit=readRDS("./output_11/fit_10chn.rds")
 #fit=readRDS("./output_4/fit.rds")
+
+
+np_fit <- nuts_params(fit)
+quartz()
+mcmc_pairs(fit$draws(c("p","gamma","beta","rho_ei","phi","sigma","eta","i0","e0")), np = np_fit, pars = c("p","beta[2]","beta[3]","eta[1]","i0[1]", "e0[1]"),
+            off_diag_args = list(size = 0.75))
 
 fit$summary("sigma") 
 fit$summary("p")
@@ -114,10 +133,7 @@ fit$draws("p") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4)
 fit$summary("p")
 fit$draws("beta[2]") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
 
-np_fit <- nuts_params(fit)
-quartz()
-mcmc_pairs(fit$draws(c("p","gamma","beta","rho_ei","phi","sigma","eta")), np = np_fit, pars = c("p","beta[2]","beta[3]","eta[1]","phi","rho_ei"),
-           off_diag_args = list(size = 0.75))
+
 
 betas=fit$draws("beta", format = "draws_array") |> posterior::as_draws_rvars()
 
