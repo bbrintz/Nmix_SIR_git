@@ -4,7 +4,7 @@ library(bayesplot)
 library(posterior)
 library(here)
 
-setwd()
+
 
 #set working directory to current file path
 case = read_csv("./data/time_series_covid19_confirmed_US.csv") %>% filter(`Province_State`=="Utah")
@@ -44,7 +44,7 @@ dplyr::select(-Population_2020,-Latitude,-Longitude,-cases) %>% pivot_wider(name
 dplyr::select(-date)
 #d1[3,12]=0
 
-tt <- cmdstan_model("SEIR_betabin_ar1_beta.stan")#cmdstan_model("SEIR_betabin_vary_beta_nospat.stan")#"stoch_beta_spatial_SI_utah_betabin.stan")
+tt <- cmdstan_model("SEIR_betabin_ar1_beta_zeros.stan")#cmdstan_model("SEIR_betabin_vary_beta_nospat.stan")#"stoch_beta_spatial_SI_utah_betabin.stan")
 
 d1[6,9]=1
 #d1=d1 %>% dplyr::select(`Salt Lake`,Utah,Davis,`Weber-Morgan`)
@@ -56,7 +56,7 @@ counties=c(1,2,3,4,5,6,7,8,10,11,12) # dist/10
 #counties=c(1,2,3,8)
 N_C = length(counties)#ncol(d1)
 
-zeros=matrix(as.numeric(as.matrix(d1)[,counties]!=0),ncol=N_C)
+first=apply(matrix(as.numeric(as.matrix(d1)[,counties]!=0),ncol=N_C),2,function(x) which(x==1)[1])
 dat <- 
   list(
     ii = as.matrix(d1)[,counties],
@@ -64,7 +64,8 @@ dat <-
     N_C = N_C,
     pop_size = pop$Population_2020[counties],
     D=dist[counties,counties]/10,
-    zeros=zeros
+    first=first,
+    min_first=min(first)
   )
 
 ? cmdstanr::cmdstan_model
@@ -80,16 +81,16 @@ fit <- tt$sample(data = dat, chains = 1,
                                   phi=runif(1,0,1),
                                   Z=runif(TT,-.25,.25),
                                   sigma = runif(1, 0, 1),
-                                  i0 = 0,#rbeta(N_C, 0.01*50, 0.99*50),
+                                  i0 = rbeta(N_C, 0.01*50, 0.99*50),
                                   e0 = rbeta(N_C, 0.01*50, 0.99*50),
                                   #rho_si = runif(1, 0.0001, 0.005),
                                   #rho_ei = runif(1, 0.001, 0.01),
                                   #rho_ir = runif(1, 0.001, 0.01),
-                                  gamma = rbeta(N_C, 0.7 * 6, 0.3 * 6))},
-                 iter_warmup = 1,
-                 iter_sampling = 1, parallel_chains = 4)#,
+                                  gamma = rbeta(N_C, 0.7 * 6, 0.3 * 6),
+                                  eta=rbeta(N_C, 0.5 * 4, 0.5 * 4))},
+                 iter_warmup = 10,
+                 iter_sampling = 10, parallel_chains = 4)#,
                  #step_size = .005)
-
 
 
 saveRDS(fit,"./output_4/fit_4chn_SEIR.rds")
