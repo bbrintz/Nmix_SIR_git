@@ -71,25 +71,29 @@ dat <-
 ? cmdstanr::cmdstan_model
 
 set.seed(123)
-fit <- tt$sample(data = dat, chains = 1,
-                 adapt_delta = 0.95,
-                 max_treedepth = 15,
+
+# No e0 
+# Calculate I0, but get rid of V_t at first time point 
+# First time point, I0 is EI so use I0 for detection thing
+
+fit <- tt$sample(data = dat, chains = 4,
+                 adapt_delta = 0.99,
+                 max_treedepth = 14,
                  init = \() {list(u_t_logit_eta = matrix(qlogis(rbeta(TT*N_C, 1, 9)), TT, N_C),
                                   v_t_logit_eta = matrix(qlogis(rbeta(TT*N_C, 1, 9)), TT, N_C),
                                   w_t_logit_eta = matrix(qlogis(rbeta(TT*N_C, 1, 9)), TT, N_C),
-                                  p = rbeta(1, 4, 4),
+                                  p = runif(1, 0,.5),
                                   phi=runif(1,0,1),
                                   Z=runif(TT,-.25,.25),
                                   sigma = runif(1, 0, 1),
                                   i0 = rbeta(N_C, 0.01*50, 0.99*50),
-                                  e0 = rbeta(N_C, 0.01*50, 0.99*50),
                                   #rho_si = runif(1, 0.0001, 0.005),
                                   #rho_ei = runif(1, 0.001, 0.01),
                                   #rho_ir = runif(1, 0.001, 0.01),
                                   gamma = rbeta(N_C, 0.7 * 6, 0.3 * 6),
                                   eta=rbeta(N_C, 0.5 * 4, 0.5 * 4))},
-                 iter_warmup = 10,
-                 iter_sampling = 10, parallel_chains = 4)#,
+                 iter_warmup = 1000,
+                 iter_sampling = 1000, parallel_chains = 4)#,
                  #step_size = .005)
 
 
@@ -101,7 +105,7 @@ fit=readRDS("./output_11/fit_10chn.rds")
 
 np_fit <- nuts_params(fit)
 quartz()
-mcmc_pairs(fit$draws(c("p","gamma","beta","rho_ei","phi","sigma","eta","i0","e0")), np = np_fit, pars = c("p","beta[2]","beta[3]","eta[1]","i0[1]", "e0[1]"),
+mcmc_pairs(fit$draws(c("p","gamma","beta","rho_ei","phi","sigma","eta","i0")), np = np_fit, pars = c("p","beta[10]","eta[1]","i0[2]"),
             off_diag_args = list(size = 0.75))
 
 fit$summary("sigma") 

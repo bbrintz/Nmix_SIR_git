@@ -13,8 +13,8 @@ set.seed(32)
 #counties=c(1,2,3,8)#c(1,2,3,4,5,6,7,8,10,11,12) # dist/10
 
 
-N_C <- 15
-TT <- 30
+N_C <- 11
+TT <- 50
 #  p=plogis(peta0 + peta1 * tests/1000)
 #  plogis(0)
 
@@ -32,24 +32,30 @@ TT <- 30
 #sigma <- 2#.05 # Standard deviation of noise
 #rho <- .9#1.2  # Spatial range parameter
 #decay_rate_space <- .15#2 # Spatial decay rate
-rho_se = .00097
-rho_ir = .657
-rho_ei = .0015
-phi1=.95
+rho_se = 0
+rho_ir = 0
+rho_ei = 0
+phi1=.9
 
+first=sample(3:8,N_C,replace=T);first
 
 #pop=read_csv("./data/utah_counties_pop_coord.csv") %>% arrange(desc(Population_2020))
 pop=1e4*sample(1:N_C)#pop[counties,]
 
-sigma=0.05
+counties=c(1,2,3,4,5,6,7,8,10,11,12) # dist/10
+pop=read_csv("./data/utah_counties_pop_coord.csv") %>% arrange(desc(Population_2020))
+pop=pop$Population_2020[counties]#1e4*sample(5:N_C)#pop[counties,]
+
+sigma=.05
 log_beta <- numeric(TT-1)
-log_beta[1] <- rnorm(1,0,sigma)
+log_beta[1] <- rnorm(1,0,sigma/sqrt(1-phi1^2));log_beta[1]
 
 for (t in 2:(TT-1)) {
   log_beta[t] <- phi1 * log_beta[t - 1] + rnorm(1,0,sigma)
 }
 exp(log_beta) %>% plot
-beta=exp(log_beta)
+beta=exp(log_beta);beta
+
 
 # create an empty list
 
@@ -61,55 +67,73 @@ eta <- runif(N_C, min = 0.72, max = 0.78)
 
 
 pop_size <- pop#pop$Population_2020[1:N_C]
-E_0 <- round(.009*pop_size)#ample(10:20,N_C,TRUE)#round(c(11902,6600,1120,737))#
-I_0 <- round(.003*pop_size)#round(c(6632.3402, 9638.4035, 3168.7845,  619.8996, 1376.2502,  263.1645, 1004.1161,#round(c(1530,3172,2761,670))
+#E_0 <- round(.009*pop_size)#ample(10:20,N_C,TRUE)#round(c(11902,6600,1120,737))#
+I_0 <- round(.005*pop_size)#
 
-S_0 <- pop_size - E_0 - I_0
-R <- S <- I <- E <- matrix(NA_real_,TT, N_C)
-ii <- SE <- IR <- EI <- matrix(NA_real_,TT-1, N_C)
+S_0 <- pop_size - I_0
+R <- S <- I <- E <- matrix(0,TT, N_C)
+ii <- SE <- IR <- EI <- matrix(0,TT-1, N_C)
 p_detect <- 0.4
-S[1,] <- S_0
-E[1,] <- E_0
-I[1,] <- I_0
-R[1,] <- 0 
+for (i in 1:N_C){
+S[1:(first[i]-1),i]= 0     
+S[first[i],i] <- S_0[i]
+
+I[1:(first[i]-1),i] = 0
+I[first[i],i] <- I_0[i]
+
+EI[first[i],i]=I_0[i]
+}
+
 
 #imp_rate=50
 
-for (t in 1:(TT-1)){
-    for (ct in  1:N_C) {
-    SE[t,ct]=rbetabinom(1,S[t,ct],1-exp(- sum(beta[t] * I[t,ct]/ pop_size[ct])),rho=rho_se) 
-    EI[t,ct]=rbetabinom(1,E[t,ct],eta[ct],rho=rho_ei) 
-    IR[t,ct]=rbetabinom(1,I[t,ct],gamma[ct],rho=rho_ir)
-    E[t+1,ct]=E[t,ct]+SE[t,ct]-EI[t,ct] #+ rpois(1,pop_size[ct]/1000)
-    I[t+1,ct]=I[t,ct]+EI[t,ct]-IR[t,ct]
-    S[t+1,ct]=S[t,ct]-SE[t,ct]
-    R[t+1,ct]=R[t,ct]+IR[t,ct]
+
+for (ct in  1:N_C) {
+    for (t in 2:(TT)){
+    if (t > first[ct]) {
+     SE[t-1,ct]=rbetabinom(1,S[t-1,ct],1-exp(- sum(beta[t-1] * I[t-1,ct]/ pop_size[ct])),rho=rho_se) 
+     if (EI[t-1,ct] == 0) {
+          EI[t-1,ct]=rbetabinom(1,E[t-1,ct],eta[ct],rho=rho_ei) 
+     } 
+     IR[t-1,ct]=rbetabinom(1,I[t-1,ct],gamma[ct],rho=rho_ir)
+     E[t,ct]=E[t-1,ct]+SE[t-1,ct]-(EI[t-1,ct]*as.numeric(t> (first[ct]+1))) #+ rpois(1,pop_size[ct]/1000)
+     I[t,ct]=I[t-1,ct]+EI[t-1,ct]-IR[t-1,ct]
+     S[t,ct]=S[t-1,ct]-SE[t-1,ct]
+     R[t,ct]=R[t-1,ct]+IR[t-1,ct]
   }
   }
+}
 
 
 ii=matrix(rbinom(N_C*(TT-1),EI,p_detect),nrow=TT-1);ii
+#ii_0=rbinom(N_C,I_0,p_detect)
 
-quartz()
+#for (i in 1:N_C){
+#ii[first[i],i]=ii_0[i]
+#}
+
+#quartz()
 ii %>% as_tibble %>% mutate(date=1:(TT-1)) %>% gather(County,Cases,-date) %>% 
 ggplot(aes(y=Cases,x=date,group=County,color=County)) + geom_line() + facet_wrap(~County,scales="free_y") + theme_minimal() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 
-tt <- cmdstan_model("SEIR_betabin_ar1_beta.stan")
+tt <- cmdstan_model("SEIR_betabin_ar1_beta_zeros.stan")
 
 dat <- 
   list(
     ii = ii,
     TT = TT,
     N_C = N_C,
-    pop_size = pop_size
+    pop_size = pop_size,
+    first=first
   )
 
+saveRDS(dat,file="dat.rds")
 
-seed(123)
+#seed(123)
 fit <- tt$sample(data = dat, chains = 4,
-                 adapt_delta = 0.95,#0.99,
-                 max_treedepth = 12,
+                 adapt_delta = 0.99,
+                 max_treedepth = 14,
                  init = \() {list(u_t_logit_eta = matrix(qlogis(rbeta(TT*N_C, 1, 9)), TT, N_C),
                                   v_t_logit_eta = matrix(qlogis(rbeta(TT*N_C, 1, 9)), TT, N_C),
                                   w_t_logit_eta = matrix(qlogis(rbeta(TT*N_C, 1, 9)), TT, N_C),
@@ -118,10 +142,9 @@ fit <- tt$sample(data = dat, chains = 4,
                                   Z=runif(TT,-.25,.25),
                                   sigma = runif(1, 0, 2),
                                   i0 = rbeta(N_C, 0.01*50, 0.99*50),
-                                  e0 = rbeta(N_C, 0.01*50, 0.99*50),
-                                  rho_se = runif(1, 0.0001, 0.01),
-                                  rho_ei = runif(1, 0.05, .25),
-                                  rho_ir = runif(1, 0, 1),
+                                  #rho_se = runif(1, 0.0001, 0.01),
+                                  #rho_ei = runif(1, 0.05, .25),
+                                  #rho_ir = runif(1, 0, 1),
                                   gamma = rbeta(N_C, 0.7 * 6, 0.3 * 6))},
                  iter_warmup = 1000,
                  iter_sampling = 1000, parallel_chains = 4)#,
@@ -129,16 +152,21 @@ fit <- tt$sample(data = dat, chains = 4,
 
 
 np_fit <- nuts_params(fit)
-
-fit$summary("beta")
-
 quartz()
-mcmc_pairs(fit$draws(c("p","gamma","beta","rho_se","rho_ei")), np = np_fit, pars = c("p","rho_se","rho_ei","beta[1]","beta[2]"),
-           off_diag_args = list(size = 0.75))
+mcmc_pairs(fit$draws(c("p","gamma","beta","rho_ei","phi","sigma","eta","i0")), np = np_fit, pars = c("p","beta[10]","eta[1]","i0[2]"),
+            off_diag_args = list(size = 0.75))
 
-quartz()
-mcmc_pairs(fit$draws(c("rho_ei","rho_ir","rho_se")), np = np_fit, pars = c("rho_ei","rho_ir","rho_se"),
-           off_diag_args = list(size = 0.75))
+
+betas=fit$draws("beta", format = "draws_array") |> posterior::as_draws_rvars()
+
+1:49 %>% purrr::map_df(function(x){
+qs=quantile(betas$beta[x],c(0.025,0.975))
+data.frame(est=mean(betas$beta[x]),low=qs[1],high=qs[2],week=x)
+}
+) %>%
+ggplot(aes(x=week,y=est)) + geom_point() + geom_line() + geom_ribbon(aes(ymin=low,ymax=high),alpha=.25) + geom_line(aes(y=beta),color="red")
+
+
 
 lims <- hist(fit$draws("p"),plot=FALSE)
 ymax <- lims$density |> max()
@@ -319,7 +347,7 @@ mutate(County= gsub("V", "X", County))
 quartz()
 dat$ii %>% as_tibble() %>% mutate(date=1:(TT-1)) %>% gather(County,Cases,-date) %>% 
 mutate(County= gsub("V", "X", County)) %>%
-ggplot(aes(x=date,y=Cases,color=County)) + geom_point() + facet_wrap(~County) + 
+ggplot(aes(x=date,y=Cases,color=County)) + geom_point() + facet_wrap(~County,scales="free_y") + 
 geom_line(data=obs,aes(x=date,y=mean),color="black") + geom_line(data=obs,aes(x=date,y=lwr),linetype=2,color="black") + 
 geom_line(data=obs,aes(x=date,y=upr),linetype=2,color="black") +
 geom_point(data=truth,aes(x=date,y=Cases),color="#5757b8",alpha=.25) +
