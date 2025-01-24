@@ -87,14 +87,14 @@ transformed parameters {
             // Begin conditional block
             //print("n: ", n, "ct: ", ct, "i_t[n-1,ct]: ", i_t[n-1,ct], "e_t[n-1,ct]: ", e_t[n-1,ct], "s_t[n-1,ct]: ", s_t[n-1,ct]);
             u_t_mean = exponential_cdf(beta_mat[n - 1,ct] * i_t[n - 1, ct] | 1);
-            u_t[n-1, ct] = inv_logit((u_t_logit_eta[n-1, ct]-2) * (sqrt((1 - rho_se) / (pop_size[ct] * s_t[n - 1, ct] * u_t_mean * (1 - u_t_mean)) + rho_se / (u_t_mean * (1 - u_t_mean)))) + logit(u_t_mean));
+            u_t[n-1, ct] = inv_logit((u_t_logit_eta[n-1, ct]) * (sqrt((1 - rho_se) / (pop_size[ct] * s_t[n - 1, ct] * u_t_mean * (1 - u_t_mean)) + rho_se / (u_t_mean * (1 - u_t_mean)))) + logit(u_t_mean));
 
             if (ei_t[n-1, ct] == 0) {
-              v_t[n-1, ct] = inv_logit((v_t_logit_eta[n-1, ct]-2) * (sqrt((1 - rho_ei) / (pop_size[ct] * e_t[n - 1, ct] * eta[ct] * (1 - eta[ct])) + rho_ei / (eta[ct] * (1 - eta[ct])))) + logit(eta[ct]));
+              v_t[n-1, ct] = inv_logit((v_t_logit_eta[n-1, ct]) * (sqrt((1 - rho_ei) / (pop_size[ct] * e_t[n - 1, ct] * eta[ct] * (1 - eta[ct])) + rho_ei / (eta[ct] * (1 - eta[ct])))) + logit(eta[ct]));
               ei_t[n-1, ct] = v_t[n-1, ct] * e_t[n - 1, ct];
             }
 
-            w_t[n-1, ct] = inv_logit((w_t_logit_eta[n-1, ct]-2) * (sqrt((1 - rho_ir) / (pop_size[ct] * i_t[n - 1, ct] * gamma[ct] * (1 - gamma[ct])) + rho_ir / (gamma[ct] * (1 - gamma[ct])))) + logit(gamma[ct]));
+            w_t[n-1, ct] = inv_logit((w_t_logit_eta[n-1, ct]) * (sqrt((1 - rho_ir) / (pop_size[ct] * i_t[n - 1, ct] * gamma[ct] * (1 - gamma[ct])) + rho_ir / (gamma[ct] * (1 - gamma[ct])))) + logit(gamma[ct]));
             se_t[n-1, ct] = u_t[n-1, ct] * s_t[n - 1, ct];
             
             ir_t[n-1, ct] = w_t[n-1, ct] * i_t[n - 1, ct];
