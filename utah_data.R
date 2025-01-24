@@ -44,7 +44,7 @@ dplyr::select(-Population_2020,-Latitude,-Longitude,-cases) %>% pivot_wider(name
 dplyr::select(-date)
 #d1[3,12]=0
 
-tt <- cmdstan_model("SEIR_betabin_ar1_beta_zeros.stan")#cmdstan_model("SEIR_betabin_vary_beta_nospat.stan")#"stoch_beta_spatial_SI_utah_betabin.stan")
+tt <- cmdstan_model("SEIR_betabin_hier_ar1_beta_zeros.stan")#cmdstan_model("SEIR_betabin_vary_beta_nospat.stan")#"stoch_beta_spatial_SI_utah_betabin.stan")
 
 d1[6,9]=1
 #d1=d1 %>% dplyr::select(`Salt Lake`,Utah,Davis,`Weber-Morgan`)
@@ -78,35 +78,42 @@ set.seed(123)
 
 fit <- tt$sample(data = dat, chains = 4,
                  adapt_delta = 0.99,
-                 max_treedepth = 14,
+                 max_treedepth = 20,
                  init = \() {list(u_t_logit_eta = matrix(qlogis(rbeta(TT*N_C, 1, 9)), TT, N_C),
                                   v_t_logit_eta = matrix(qlogis(rbeta(TT*N_C, 1, 9)), TT, N_C),
                                   w_t_logit_eta = matrix(qlogis(rbeta(TT*N_C, 1, 9)), TT, N_C),
-                                  p = runif(1, 0,.5),
-                                  phi=runif(1,0,1),
+                                  p = runif(1, .2,.5),
+                                  phi=runif(1,0,.5),
                                   Z=runif(TT,-.25,.25),
                                   sigma = runif(1, 0, 1),
+                                  sig_beta = runif(1, 0, 1),
                                   i0 = rbeta(N_C, 0.01*50, 0.99*50),
                                   #rho_si = runif(1, 0.0001, 0.005),
                                   #rho_ei = runif(1, 0.001, 0.01),
                                   #rho_ir = runif(1, 0.001, 0.01),
                                   gamma = rbeta(N_C, 0.7 * 6, 0.3 * 6),
-                                  eta=rbeta(N_C, 0.5 * 4, 0.5 * 4))},
-                 iter_warmup = 1000,
-                 iter_sampling = 1000, parallel_chains = 4)#,
+                                  eta=runif(N_C,.25,.75))},#rbeta(N_C, 0.5 * 4, 0.5 * 4))},
+                 iter_warmup = 500,
+                 iter_sampling = 500, parallel_chains = 4)#,
                  #step_size = .005)
 
 
-saveRDS(fit,"./output_4/fit_4chn_SEIR.rds")
+fit$diagnostic_summary()
+
+saveRDS(fit,"./fit_utah_hier_ar1.rds")
 
 fit=readRDS("./output_11/fit_10chn.rds")
 #fit=readRDS("./output_4/fit.rds")
+fit_tbl=fit$summary() %>% as_tibble()
+saveRDS(fit_tbl,"./fit_utah_hier_ar1_tbl.rds")
 
+fit_tbl=readRDS("./fit_utah_hier_ar1_tbl.rds")
 
 np_fit <- nuts_params(fit)
 quartz()
-mcmc_pairs(fit$draws(c("p","gamma","beta","rho_ei","phi","sigma","eta","i0")), np = np_fit, pars = c("p","beta[10]","eta[1]","i0[2]"),
+mcmc_pairs(fit$draws(c("p","gamma","beta_mat","phi","sigma","eta","i0")), np = np_fit, pars = c("p","beta_mat[1,2]","eta[1]","gamma[1]","i0[2]","phi"),
             off_diag_args = list(size = 0.75))
+
 
 fit$summary("sigma") 
 fit$summary("p")
@@ -138,6 +145,8 @@ fit$draws("p") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4)
 fit$summary("p")
 fit$draws("beta[2]") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:1000,4),group=key,color=key)) + geom_line()
 
+quartz()
+fit$draws("sig_beta") %>% as_tibble %>% gather() %>% ggplot(aes(y=value,x=rep(1:500,4),group=key,color=key)) + geom_line()
 
 
 betas=fit$draws("beta", format = "draws_array") |> posterior::as_draws_rvars()
@@ -215,3 +224,4 @@ fit$summary() %>% as_tibble() %>% filter(!grepl("u_t",variable),!grepl("w_t",var
 
 fit$summary() %>% as_tibble() %>% filter(grepl("Z",variable))
 
+rbeta(1e6, 0.5 * 4, 0.5 * 4) %>% hist

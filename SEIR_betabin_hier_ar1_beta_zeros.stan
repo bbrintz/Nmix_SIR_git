@@ -12,15 +12,19 @@ parameters {
   matrix[TT, N_C] u_t_logit_eta;
   matrix[TT, N_C] w_t_logit_eta;
   matrix[TT, N_C] v_t_logit_eta;
+  matrix[TT, N_C] raw_log_beta_mat;
   row_vector<lower=0, upper=1>[N_C] i0;
   real<lower=0, upper=1> p;
   vector<lower=0, upper=1>[N_C] gamma;
   vector<lower=0, upper=1>[N_C] eta;
   //real<lower=0,upper=1> rho_ir; // Spatial range parameter
   //real<lower=0,upper=1> rho_ei; // Spatial range parameter
-  real<lower=-1,upper=1> phi;
+  //real<lower=-1,upper=1> phi;
+  real<lower=0,upper=1> v;
+
   vector[TT] Z;
   real<lower=0> sigma; 
+  real<lower=0> sig_beta;
 }
 
 transformed parameters {
@@ -34,11 +38,13 @@ transformed parameters {
   matrix[TT, N_C] v_t;
   matrix[TT, N_C] w_t;
   vector[TT] log_beta;
-  vector<lower=0>[TT] beta;
+  matrix[TT, N_C] log_beta_mat;
+  matrix[TT, N_C] beta_mat;
   real<lower=0,upper=0> rho_se;
   real<lower=0,upper=0> rho_ei;
   real<lower=0,upper=0> rho_ir;
   real u_t_mean;
+  real phi = 2 * v - 1;
 
   rho_se = 0;
   rho_ei = 0;
@@ -63,13 +69,16 @@ transformed parameters {
  
 
   log_beta[1] = Z[1];
-  beta[1]=exp(log_beta[1]);
-
   for (n in 2:TT) {
-        log_beta[n] = phi * log_beta[n - 1] + Z[n];
-        beta[n] = exp(log_beta[n]);
+    log_beta[n] = phi * log_beta[n - 1] + Z[n];
   }
+  for (t in 1:TT) {
+    for (ct in 1:N_C) {
+      log_beta_mat[t, ct] = log_beta[t] + sig_beta * raw_log_beta_mat[t, ct];
+      beta_mat[t, ct] = exp(log_beta_mat[t, ct]);
 
+    }
+  }
 
 
   for (ct in 1:N_C) {
@@ -77,15 +86,15 @@ transformed parameters {
       if (n > first[ct]) {
             // Begin conditional block
             //print("n: ", n, "ct: ", ct, "i_t[n-1,ct]: ", i_t[n-1,ct], "e_t[n-1,ct]: ", e_t[n-1,ct], "s_t[n-1,ct]: ", s_t[n-1,ct]);
-            u_t_mean = exponential_cdf(beta[n - 1] * i_t[n - 1, ct] | 1);
-            u_t[n-1, ct] = inv_logit(u_t_logit_eta[n-1, ct] * (sqrt((1 - rho_se) / (pop_size[ct] * s_t[n - 1, ct] * u_t_mean * (1 - u_t_mean)) + rho_se / (u_t_mean * (1 - u_t_mean)))) + logit(u_t_mean));
+            u_t_mean = exponential_cdf(beta_mat[n - 1,ct] * i_t[n - 1, ct] | 1);
+            u_t[n-1, ct] = inv_logit((u_t_logit_eta[n-1, ct]-2) * (sqrt((1 - rho_se) / (pop_size[ct] * s_t[n - 1, ct] * u_t_mean * (1 - u_t_mean)) + rho_se / (u_t_mean * (1 - u_t_mean)))) + logit(u_t_mean));
 
             if (ei_t[n-1, ct] == 0) {
-              v_t[n-1, ct] = inv_logit(v_t_logit_eta[n-1, ct] * (sqrt((1 - rho_ei) / (pop_size[ct] * e_t[n - 1, ct] * eta[ct] * (1 - eta[ct])) + rho_ei / (eta[ct] * (1 - eta[ct])))) + logit(eta[ct]));
+              v_t[n-1, ct] = inv_logit((v_t_logit_eta[n-1, ct]-2) * (sqrt((1 - rho_ei) / (pop_size[ct] * e_t[n - 1, ct] * eta[ct] * (1 - eta[ct])) + rho_ei / (eta[ct] * (1 - eta[ct])))) + logit(eta[ct]));
               ei_t[n-1, ct] = v_t[n-1, ct] * e_t[n - 1, ct];
             }
 
-            w_t[n-1, ct] = inv_logit(w_t_logit_eta[n-1, ct] * (sqrt((1 - rho_ir) / (pop_size[ct] * i_t[n - 1, ct] * gamma[ct] * (1 - gamma[ct])) + rho_ir / (gamma[ct] * (1 - gamma[ct])))) + logit(gamma[ct]));
+            w_t[n-1, ct] = inv_logit((w_t_logit_eta[n-1, ct]-2) * (sqrt((1 - rho_ir) / (pop_size[ct] * i_t[n - 1, ct] * gamma[ct] * (1 - gamma[ct])) + rho_ir / (gamma[ct] * (1 - gamma[ct])))) + logit(gamma[ct]));
             se_t[n-1, ct] = u_t[n-1, ct] * s_t[n - 1, ct];
             
             ir_t[n-1, ct] = w_t[n-1, ct] * i_t[n - 1, ct];
@@ -106,8 +115,9 @@ model {
   //rho_se ~ beta(1,3);//gamma(2, 2);
   //rho_ir ~ beta(1,3); //gamma(2, 2);
   //rho_ei ~ beta(1,3); //gamma(2, 2);
-  phi ~ uniform(-1,1);
+  v ~ beta(2, 2);
   sigma ~ gamma(2, 2);
+  sig_beta ~ gamma(2, 2);
   Z[2:TT] ~ normal(0, sigma);
   Z[1] ~ normal(0, sigma / sqrt(1 - phi^2)); 
 
@@ -121,6 +131,9 @@ model {
  to_vector(u_t_logit_eta) ~ std_normal();
  to_vector(v_t_logit_eta) ~ std_normal();
  to_vector(w_t_logit_eta) ~ std_normal();
+ to_vector(raw_log_beta_mat) ~ std_normal();
+
+
 
  for (ct in 1:N_C) {
   for (i in 1:(TT-1)) {

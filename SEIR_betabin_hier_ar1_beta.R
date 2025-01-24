@@ -14,7 +14,7 @@ set.seed(32)
 
 
 N_C <- 11
-TT <- 50
+TT <- 30
 #  p=plogis(peta0 + peta1 * tests/1000)
 #  plogis(0)
 
@@ -28,52 +28,60 @@ TT <- 50
 
 # Spatial parameters
 # Parameters
-
 #sigma <- 2#.05 # Standard deviation of noise
 #rho <- .9#1.2  # Spatial range parameter
 #decay_rate_space <- .15#2 # Spatial decay rate
 rho_se = 0
-rho_ir = 0.1
-rho_ei = 0.1
-phi1=.9
-
+rho_ir = 0
+rho_ei = 0
+phi1=.77
+sig_beta=.7
 first=sample(3:8,N_C,replace=T);first
 
 #pop=read_csv("./data/utah_counties_pop_coord.csv") %>% arrange(desc(Population_2020))
 pop=1e4*sample(1:N_C)#pop[counties,]
 
-counties=c(1,2,3,4,5,6,7,8,10,11,12) # dist/10
-pop=read_csv("./data/utah_counties_pop_coord.csv") %>% arrange(desc(Population_2020))
-pop=pop$Population_2020[counties]#1e4*sample(5:N_C)#pop[counties,]
+#counties=c(1,2,3,4,5,6,7,8,10,11,12) # dist/10
+#pop=read_csv("./data/utah_counties_pop_coord.csv") %>% arrange(desc(Population_2020))
+#pop=pop$Population_2020[counties]#1e4*sample(5:N_C)#pop[counties,]
 
-sigma=.05
+sigma=.65
 log_beta <- numeric(TT-1)
 log_beta[1] <- rnorm(1,0,sigma/sqrt(1-phi1^2));log_beta[1]
 
 for (t in 2:(TT-1)) {
   log_beta[t] <- phi1 * log_beta[t - 1] + rnorm(1,0,sigma)
 }
-exp(log_beta) %>% plot
-beta=exp(log_beta);beta
 
+log_beta_mat=matrix(0,TT-1,N_C)
+for (t in 1:(TT-1)) {
+  log_beta_mat[t,] <- log_beta[t] + sig_beta * rnorm(N_C,0,1)
+}
+
+exp(log_beta) %>% plot
+beta=exp(log_beta_mat);beta
 
 # create an empty list
 
-gamma <- runif(N_C, min = 0.75, max = 0.81)
-eta <- runif(N_C, min = 0.72, max = 0.78)
+gamma <- runif(N_C, min = 0.75, max = 0.9)
+eta <- runif(N_C, min = 0.3, max = 0.8)
 
 
 
+
+fit_tbl %>% filter(grepl("p",variable))
 
 
 pop_size <- pop#pop$Population_2020[1:N_C]
 #E_0 <- round(.009*pop_size)#ample(10:20,N_C,TRUE)#round(c(11902,6600,1120,737))#
 I_0 <- round(.005*pop_size)#
 
+
+
 S_0 <- pop_size - I_0
 R <- S <- I <- E <- matrix(0,TT, N_C)
 ii <- SE <- IR <- EI <- matrix(0,TT-1, N_C)
-p_detect <- 0.4
+p_detect <- 0.2
 for (i in 1:N_C){
 S[1:(first[i]-1),i]= 0     
 S[first[i],i] <- S_0[i]
@@ -91,7 +99,7 @@ EI[first[i],i]=I_0[i]
 for (ct in  1:N_C) {
     for (t in 2:(TT)){
     if (t > first[ct]) {
-     SE[t-1,ct]=rbetabinom(1,S[t-1,ct],1-exp(- sum(beta[t-1] * I[t-1,ct]/ pop_size[ct])),rho=rho_se) 
+     SE[t-1,ct]=rbetabinom(1,S[t-1,ct],1-exp(- sum(beta[t-1,ct] * I[t-1,ct]/ pop_size[ct])),rho=rho_se) 
      if (EI[t-1,ct] == 0) {
           EI[t-1,ct]=rbetabinom(1,E[t-1,ct],eta[ct],rho=rho_ei) 
      } 
@@ -113,11 +121,18 @@ ii=matrix(rbinom(N_C*(TT-1),EI,p_detect),nrow=TT-1);ii
 #}
 
 #quartz()
+
+#saveRDS(ii,file="ii.rds")
+
 ii %>% as_tibble %>% mutate(date=1:(TT-1)) %>% gather(County,Cases,-date) %>% 
 ggplot(aes(y=Cases,x=date,group=County,color=County)) + geom_line() + facet_wrap(~County,scales="free_y") + theme_minimal() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
+dat$ii %>% as_tibble %>% mutate(date=1:(TT-1)) %>% gather(County,Cases,-date) %>% 
+ggplot(aes(y=Cases,x=date,group=County,color=County)) + geom_line() + facet_wrap(~County,scales="free_y") + theme_minimal() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
-tt <- cmdstan_model("SEIR_betabin_ar1_beta_zeros.stan")
+
+
+tt <- cmdstan_model("SEIR_betabin_hier_ar1_beta_zeros.stan")
 
 dat <- 
   list(
@@ -129,32 +144,60 @@ dat <-
   )
 
 #saveRDS(dat,file="dat2.rds")
-dat=readRDS("dat2.rds")
+#dat=readRDS("dat2.rds")
 #seed(123)
-fit <- tt$sample(data = dat, chains = 4,
-                 adapt_delta = 0.99,
-                 max_treedepth = 14,
-                 init = \() {list(u_t_logit_eta = matrix(qlogis(rbeta(TT*N_C, 1, 9)), TT, N_C),
-                                  v_t_logit_eta = matrix(qlogis(rbeta(TT*N_C, 1, 9)), TT, N_C),
-                                  w_t_logit_eta = matrix(qlogis(rbeta(TT*N_C, 1, 9)), TT, N_C),
-                                  p = rbeta(1, 4, 4),
+fit = tt$sample(data = dat, chains = 5,
+                 adapt_delta = 0.95,
+                 max_treedepth = 12,
+                 init = \() {list(u_t_logit_eta = matrix(rnorm(TT*N_C, -1, 1), TT, N_C),
+                                  v_t_logit_eta = matrix(rnorm(TT*N_C, -1, 1), TT, N_C),
+                                  w_t_logit_eta = matrix(rnorm(TT*N_C, -1, 1), TT, N_C),
+                                  p = runif(1, .2,.5),
                                   phi=runif(1,0,1),
-                                  Z=runif(TT,-.25,.25),
-                                  sigma = runif(1, 0, 2),
+                                  Z=rnorm(TT,-.25,.25),
+                                  sigma = runif(1, .25, .75),
+                                  sig_beta = runif(1, .25, .75),
                                   i0 = rbeta(N_C, 0.01*50, 0.99*50),
-                                  #rho_se = runif(1, 0.0001, 0.01),
-                                  #rho_ei = runif(1, 0.05, .25),
-                                  #rho_ir = runif(1, 0, 1),
-                                  gamma = rbeta(N_C, 0.7 * 6, 0.3 * 6))},
+                                  #rho_si = runif(1, 0.0001, 0.005),
+                                  #rho_ei = runif(1, 0.001, 0.01),
+                                  #rho_ir = runif(1, 0.001, 0.01),
+                                  gamma = rbeta(N_C, 0.7 * 6, 0.3 * 6),
+                                  eta=runif(N_C,.25,.75))},#rbeta(N_C, 0.5 * 4, 0.5 * 4))},
                  iter_warmup = 1000,
-                 iter_sampling = 1000, parallel_chains = 4)#,
-                 #step_size = 1.5e-3)
+                 iter_sampling = 1000, parallel_chains = 5)#,
 
+tst=fit$metadata()
+names(tst)
+tst$init
+
+
+
+fit$init()
+system("cat /var/folders/1k/9yy62ckj3811gx4gtcf3nbww0000gq/T/RtmpQvoxCj/init-13d676baf4ab_4.json")
+
+inits=c(3,4,5,6,8,9,10) %>% purrr::map(function(x){
+     fromJSON(paste0("/var/folders/1k/9yy62ckj3811gx4gtcf3nbww0000gq/T/RtmpQvoxCj/init-13d65554ff16_",x,".json")) 
+})
+saveRDS(inits,file="inits6.rds")
+inits %>% purrr::map(~.$v)
+inits[[6]]
+
+tst=readRDS("inits6.rds")
+
+tst %>% purrr::map_df(function(x) x %>% purrr::map(function(y) median(y)))
+length(tst)
+tst %>% purrr::map(~.$sigma)
+
+
+
+
+fit$summary()
+fit$diagnostic_summary()
 
 np_fit <- nuts_params(fit)
 quartz()
-mcmc_pairs(fit$draws(c("p","gamma","beta","rho_ei","phi","sigma","eta","i0")), np = np_fit, pars = c("p","beta[10]","eta[1]","gamma[1]","i0[2]"),
-            off_diag_args = list(size = 0.75))
+mcmc_pairs(fit$draws(c("p","gamma","beta_mat","rho_ei","phi","sigma","eta","i0")), np = np_fit, pars = c("p","beta_mat[1,2]","eta[1]","gamma[1]","i0[2]"),
+            condition = pairs_condition(chains = list(c(1:5),c(6,7))))
 
 
 betas=fit$draws("beta", format = "draws_array") |> posterior::as_draws_rvars()
